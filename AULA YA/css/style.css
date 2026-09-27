@@ -846,9 +846,73 @@ p { margin: 0; }
 .niko-chat-head img { width:46px; height:46px; border-radius:50%; object-fit:cover; }
 .niko-chat-head b { font-size:15px; display:block; }
 .niko-chat-head small { color: var(--green-600); font-weight:700; font-size:12px; }
+.niko-slm-card {
+  margin:0 0 12px;
+  padding:12px;
+  border:1px solid #dcebe0;
+  border-radius:17px;
+  background:linear-gradient(145deg,#f4fbf6,#f2f8ff);
+}
+.niko-slm-heading { display:flex; align-items:center; gap:9px; }
+.niko-slm-icon {
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#e2f3e7;
+  color:#287a43;
+  font-size:19px;
+}
+.niko-slm-heading strong,.niko-slm-heading small { display:block; }
+.niko-slm-heading strong { color:#214a30; font-size:13px; }
+.niko-slm-heading small { margin-top:2px; color:#6b7b70; font-size:10px; line-height:1.35; }
+.niko-slm-model-label { display:block; margin:10px 0 5px; color:#4f6957; font-size:10px; font-weight:800; }
+.niko-slm-controls { display:flex; align-items:stretch; gap:7px; }
+.niko-slm-controls select {
+  min-width:0;
+  flex:1;
+  padding:0 9px;
+  border:1px solid #d8e5db;
+  border-radius:11px;
+  background:#fff;
+  color:#34483a;
+  font:inherit;
+  font-size:11px;
+  font-weight:700;
+}
+.niko-slm-controls button {
+  min-height:40px;
+  flex:0 0 auto;
+  padding:0 11px;
+  border:0;
+  border-radius:11px;
+  background:#287d47;
+  color:#fff;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.niko-slm-controls button:disabled { background:#dce7de; color:#6f7e73; cursor:not-allowed; }
+.niko-slm-controls button:focus-visible,.niko-slm-controls select:focus-visible {
+  outline:3px solid rgba(48,141,78,.3);
+  outline-offset:2px;
+}
+.niko-slm-message { margin:8px 0 0; color:#42594a; font-size:10px; line-height:1.45; }
+.niko-slm-progress-wrap { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; margin-top:7px; }
+.niko-slm-progress-wrap progress { width:100%; height:8px; accent-color:#30894e; }
+.niko-slm-progress-wrap small { color:#597261; font-size:9px; white-space:nowrap; }
+.niko-slm-storage-note { display:block; margin-top:6px; color:#78857b; font-size:9px; line-height:1.4; }
 .chat-scroll { display:flex; flex-direction:column; gap:12px; min-height: 240px; }
 .chip-row { display:flex; flex-wrap:wrap; gap:8px; margin: 14px 0; }
 .chip-row button { border:none; background: var(--green-100); color: var(--green-800); font-weight:700; font-size:12px; padding:8px 12px; border-radius: 14px; }
+
+@media (max-width:380px) {
+  .niko-slm-card { padding:10px; }
+  .niko-slm-controls { flex-direction:column; }
+  .niko-slm-controls select { min-height:38px; }
+}
 
 /* ---------------------------------------------------------
    Docente (desktop) layout

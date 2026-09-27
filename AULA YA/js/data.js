@@ -786,6 +786,12 @@ function nikoCurriculumTopicMatch(text) {
   try {
     const t = nikoNormalize(text);
     if (typeof MALLA_ACADEMICA === "undefined") return null;
+    const stopWords = new Set(["que", "cual", "como", "cuando", "donde", "para", "una", "uno", "unos", "unas", "con", "del", "las", "los", "por", "es", "de", "el", "la", "me", "mi", "no", "entiendo", "explica", "explicame", "ejemplo", "ejemplos", "dame"]);
+    const topicWords = value => nikoNormalize(value)
+      .split(/[^a-z0-9]+/)
+      .filter(word => word.length > 2 && !stopWords.has(word))
+      .map(word => word.length > 6 && word.endsWith("es") ? word.slice(0, -2) : word.length > 4 && word.endsWith("s") ? word.slice(0, -1) : word);
+    const queryWords = new Set(topicWords(t));
     const gradosPermitidos = new Set([1,2,3,4,5,8,9,10]);
     const matches=[];
     for (const g of gradosPermitidos) {
@@ -794,11 +800,16 @@ function nikoCurriculumTopicMatch(text) {
         const topics=Array.isArray(val)?val:Object.values(val).flat();
         for (const tema of topics) {
           const nk=nikoNormalize(tema);
-          if (nk && (t.includes(nk) || nk.includes(t)) && t.length>=4) matches.push({grado:g,area,tema});
+          const words=topicWords(nk);
+          const exactWords=words.length>0&&words.every(word=>queryWords.has(word));
+          const overlap=words.filter(word=>queryWords.has(word)).length;
+          if (nk && t.length>=4 && (t.includes(nk) || nk.includes(t) || overlap>0)) {
+            matches.push({grado:g,area,tema,score:(exactWords?1000:0)+(overlap*100)+words.length});
+          }
         }
       }
     }
-    return matches.sort((a,b)=>a.tema.length-b.tema.length)[0]||null;
+    return matches.sort((a,b)=>b.score-a.score||b.tema.length-a.tema.length)[0]||null;
   } catch(e){ return null; }
 }
 

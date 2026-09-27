@@ -1597,6 +1597,71 @@ function renderFuturo() {
 let nikoFullChatLog = [
   { mine: false, mood: "saludo", text: "¡Hola! Soy Niko, tu tutor de AULA. ¿En qué tema quieres que te ayude hoy?" },
 ];
+let nikoFullChatContext = null;
+
+function renderNikoSlmCard() {
+  const config=window.AULA_SLM?.config||{};
+  const status=window.AULA_SLM?.getStatus?.()||{};
+  const selectedModel=status.selectedModel||config.defaultModel||config.fallback||"";
+  const installedModel=status.installedModel||"";
+  const isLoading=status.status==="loading"||status.status==="generating";
+  const isInstalledReady=status.status==="ready"&&status.model===selectedModel&&installedModel===selectedModel;
+  const hasRuntime=!!window.AULA_SLM?.install;
+  const modelNames={
+    [config.fallback]:"SmolLM2 135M · ligero",
+    [config.primary]:"Qwen 0.5B · avanzado",
+  };
+  let message="El tutor curricular de Niko funciona sin descargar nada. Instala un modelo si también quieres generación local.";
+  if(!hasRuntime) message="Preparando el motor local. El tutor curricular sigue disponible.";
+  else if(status.status==="loading") {
+    const percent=status.progress?.percent;
+    message=`Descargando y preparando ${modelNames[status.model]||"el modelo local"}${Number.isFinite(percent)?` · ${Math.round(percent)}%`:"…"} No cierres esta pestaña.`;
+  } else if(status.status==="generating") message="Niko está pensando en este dispositivo. Tu pregunta no se envía a un servidor.";
+  else if(status.status==="ready"&&isInstalledReady) message=`${modelNames[status.model]||"Modelo local"} listo y guardado en este navegador para intentar usarlo sin conexión.`;
+  else if(status.status==="ready") message=`${modelNames[status.model]||"Modelo local"} está cargado. Selecciona ese modelo o instala el que prefieras.`;
+  else if(status.status==="error") message=escapeAuthHtml(status.error||"No se pudo preparar el modelo.");
+  else if(installedModel) message="Se encontró un modelo instalado; comprobando su caché local…";
+
+  const percent=status.progress?.percent;
+  const progressLabel=status.progress?.total>0
+    ? `${(status.progress.loaded/(1024*1024)).toFixed(1)} de ${(status.progress.total/(1024*1024)).toFixed(1)} MB`
+    : "Descarga en curso";
+  const disabled=!hasRuntime||isLoading||!navigator.onLine||isInstalledReady;
+  const buttonText=!navigator.onLine&&!isInstalledReady?"Conéctate para descargar"
+    :isLoading?"Preparando modelo…":isInstalledReady?"Modelo listo offline":"Descargar para uso sin conexión";
+  const storageNote=status.persistentStorage===false&&isInstalledReady
+    ? "El navegador no garantizó conservar los archivos; su caché puede eliminarse si falta espacio."
+    : "La primera descarga requiere internet y espacio libre. Después, la disponibilidad offline depende de que el navegador conserve su caché.";
+  return `<section class="niko-slm-card" id="niko-slm-card" aria-label="Estado del modelo local">
+    <div class="niko-slm-heading"><span class="niko-slm-icon" aria-hidden="true">✦</span><div><strong>IA local opcional</strong><small>Niko también tiene un tutor curricular que funciona sin modelo.</small></div></div>
+    <label class="niko-slm-model-label" for="niko-slm-model">Modelo para este dispositivo</label>
+    <div class="niko-slm-controls"><select id="niko-slm-model" ${isLoading?"disabled":""}>
+      ${config.fallback?`<option value="${config.fallback}" ${selectedModel===config.fallback?"selected":""}>Ligero · unos ${config.fallbackApproxMB||181} MB</option>`:""}
+      ${config.primary?`<option value="${config.primary}" ${selectedModel===config.primary?"selected":""}>Avanzado · unos ${config.primaryApproxMB||786} MB</option>`:""}
+    </select><button type="button" id="niko-slm-install" ${disabled?"disabled":""}>${buttonText}</button></div>
+    <p class="niko-slm-message" id="niko-slm-message" role="status" aria-live="polite">${message}</p>
+    ${status.status==="loading"?`<div class="niko-slm-progress-wrap"><progress max="100" ${Number.isFinite(percent)?`value="${percent}"`:""} aria-label="Progreso de descarga del modelo"></progress><small>${progressLabel}</small></div>`:""}
+    <small class="niko-slm-storage-note">${storageNote}</small>
+  </section>`;
+}
+
+function refreshNikoSlmCard() {
+  const current=document.getElementById("niko-slm-card");
+  if(!current) return;
+  const focusedId=document.activeElement?.id;
+  const holder=document.createElement("div");
+  holder.innerHTML=renderNikoSlmCard();
+  const updated=holder.firstElementChild;
+  if(updated) {
+    current.replaceWith(updated);
+    if(focusedId&&updated.querySelector(`#${focusedId}`)) updated.querySelector(`#${focusedId}`).focus({preventScroll:true});
+  }
+}
+
+window.addEventListener("aula-slm-status", refreshNikoSlmCard);
+window.addEventListener("aula-slm-ready", refreshNikoSlmCard);
+window.addEventListener("online", refreshNikoSlmCard);
+window.addEventListener("offline", refreshNikoSlmCard);
 
 function renderNikoChat() {
   // Si el estudiante llegó desde una lección, conservamos ese tema como
@@ -1612,9 +1677,10 @@ function renderNikoChat() {
       ${nikoImg("explica", "niko-avatar-md")}
       <div>
         <b>Niko</b>
-        <small>Tutor IA local · se descarga automáticamente con internet y luego funciona offline</small>
+        <small>Tutor curricular offline · generación local opcional</small>
       </div>
     </div>
+    ${renderNikoSlmCard()}
     <div class="chat-scroll" id="niko-full-scroll">${bubbles}</div>
     <div class="chip-row">${chips}</div>
     <div class="ask-box">
@@ -2726,20 +2792,29 @@ async function sendToNikoChat(log, text) {
   const thinkingBubble = { mine: false, thinking: true };
   log.push(thinkingBubble);
   render();
+  let curatedReply=null;
 
   // El SLM real corre localmente en el navegador cuando ya fue descargado.
   // Si todavía no está disponible (por primera carga, dispositivo limitado
   // o falta de internet), se usa inmediatamente el tutor curricular offline.
   try {
-    const inferred = (!NIKO_ACTIVE_TOPIC && typeof nikoCurriculumTopicMatch === 'function')
+    const explicitTopic = typeof nikoCurriculumTopicMatch === "function"
+      ? nikoCurriculumTopicMatch(NIKO_ACTIVE_TOPIC || text) : null;
+    const inferred = !NIKO_ACTIVE_TOPIC && typeof nikoCurriculumTopicMatch === 'function'
       ? nikoCurriculumTopicMatch(text) : null;
-    const topic = NIKO_ACTIVE_TOPIC || inferred?.tema || '';
-    const grade = inferred?.grado || window.STATE?.student?.grade || window.STATE?.auth?.grado || '';
-    const subject = inferred?.area || window.STATE?.activeLessonSubject || '';
+    const detectedTopic = !NIKO_ACTIVE_TOPIC&&!inferred&&typeof nikoDetectTopic==="function"
+      ? nikoDetectTopic(text,nikoFullChatContext?.topic||null) : null;
+    const topic = NIKO_ACTIVE_TOPIC || inferred?.tema || explicitTopic?.tema || detectedTopic || nikoFullChatContext?.topic || '';
+    const grade = inferred?.grado || explicitTopic?.grado || nikoFullChatContext?.grade || window.STATE?.student?.grade || window.STATE?.auth?.grado || '';
+    const subject = inferred?.area || explicitTopic?.area || nikoFullChatContext?.subject || window.STATE?.activeLessonSubject || '';
+    if(topic) nikoFullChatContext={topic,grade,subject};
+    curatedReply=nikoReply(text,topic||null);
 
-    if (window.AULA_SLM?.generate && topic) {
+    if (window.AULA_SLM?.isReady?.() && topic) {
+      const grounding=document.createElement("div");
+      grounding.innerHTML=curatedReply.text;
       const answer = await window.AULA_SLM.generate(text, {
-        grade, subject, topic
+        grade, subject, topic, grounding:grounding.textContent||""
       });
       if (answer) {
         const safe = String(answer).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -2753,7 +2828,7 @@ async function sendToNikoChat(log, text) {
     console.warn('[AULA SLM] fallback curricular:', e);
   }
 
-  const reply = nikoReply(text, NIKO_ACTIVE_TOPIC);
+  const reply = curatedReply || nikoReply(text, NIKO_ACTIVE_TOPIC || nikoFullChatContext?.topic || null);
   const idx = log.indexOf(thinkingBubble);
   if (idx !== -1) log.splice(idx, 1, { mine: false, text: reply.text, mood: reply.mood });
   render();
@@ -2833,6 +2908,10 @@ document.addEventListener("change", (e) => {
     const destSelect = document.getElementById("msg-destinatario");
     if (destSelect) destSelect.innerHTML = destinatarioSelectHtml(cls);
   }
+  if (e.target && e.target.id === "niko-slm-model" && window.AULA_SLM?.selectModel) {
+    try { window.AULA_SLM.selectModel(e.target.value); }
+    catch (error) { showToast(error.message || "No se pudo seleccionar ese modelo."); }
+  }
 });
 
 // ---------------------------------------------------------------------
@@ -2841,6 +2920,21 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("click", (e) => {
   const el = e.target;
+
+  const installSlmBtn=el.closest("#niko-slm-install");
+  if(installSlmBtn){
+    const model=document.getElementById("niko-slm-model")?.value;
+    if(!window.AULA_SLM?.install||!model){showToast("El motor local todavía no está disponible. El tutor curricular sigue funcionando.");return;}
+    try {
+      window.AULA_SLM.selectModel(model);
+      window.AULA_SLM.install(model)
+        .then(()=>showToast("Modelo listo. Niko podrá usarlo en este dispositivo, incluso sin conexión mientras el navegador conserve los archivos."))
+        .catch((error)=>showToast(error.message||"No se pudo descargar el modelo local."));
+    } catch(error) {
+      showToast(error.message||"No se pudo iniciar la descarga.");
+    }
+    return;
+  }
 
   // navegación simple
   const navBtn = el.closest("[data-nav]");

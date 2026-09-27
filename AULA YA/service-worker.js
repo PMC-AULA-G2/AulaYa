@@ -3,13 +3,12 @@
 // "Funcionamiento offline y online" del diseño: videos, ejercicios, juegos,
 // Niko (SLM) y progreso deben seguir disponibles sin internet).
 
-const CACHE_NAME = "aula-cache-v14";
+const CACHE_NAME = "aula-cache-v18";
 // caché aparte para videos descargados a propósito por el usuario (ver
 // downloadVideo() en js/app.js) — NO se pre-carga como CORE_ASSETS: el
 // estudiante decide qué video guardar para verlo sin internet, porque los
 // videos pesan más y el ancho de banda/almacenamiento rural es limitado.
 const VIDEO_CACHE = "aula-videos-v1";
-const TOPIC_PACKAGE_CACHE = "aula-topic-packages-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +21,7 @@ const CORE_ASSETS = [
   "./js/slm_runtime.js",
   "./js/microvideos.js",
   "./js/streak.js",
+  "./js/config.js",
   "./data/microvideo_catalog.json",
   "./data/colegios_rurales_2024.json",
   "./data/colegios_catalog_meta.json",
@@ -69,7 +69,9 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== VIDEO_CACHE && k !== TOPIC_PACKAGE_CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) =>
+        k.startsWith("aula-cache-") && k !== CACHE_NAME
+      ).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -96,6 +98,14 @@ self.addEventListener("message", (event) => {
 // ahí incluso sin conexión; si no, va directo a la red.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  const requestUrl = new URL(event.request.url);
+  // Transformers.js keeps model/tokenizer files in its own cache. Do not
+  // duplicate huge Hugging Face model responses in the app-shell cache.
+  if (requestUrl.hostname === "huggingface.co" || requestUrl.hostname.endsWith(".huggingface.co") || requestUrl.hostname.endsWith(".xethub.hf.co")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (event.request.url.includes("/media/videos/")) {
     event.respondWith(

@@ -15,7 +15,9 @@
     "role": "dispositivo_limitado",
     "source": "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX"
   },
-  "offline_behavior": "El modelo se descarga la primera vez que hay internet y Transformers.js lo conserva en caché del navegador. Después puede ejecutarse sin conexión si el almacenamiento del dispositivo conserva la caché.",
+  "offline_behavior": "Descarga voluntaria desde el chat de Niko. Transformers.js conserva pesos y tokenizador en su caché del navegador; la app solicita almacenamiento persistente y carga el modelo instalado al iniciar, incluso offline. El navegador puede eliminar los datos del sitio por falta de espacio.",
+  "download_ui": "Chat de Niko: selección de modelo, progreso de descarga y estado offline",
+  "default_model": "onnx-community/SmolLM2-135M-Instruct-ONNX",
   "education_layer": "RAG local por grado + materia + tema, banco de preguntas y prompt pedagógico de AULA YA.",
   "note": "El modelo base es preentrenado; esta versión no afirma que exista un fine-tuning propietario de AULA YA. El runtime sí ejecuta un SLM real localmente en el navegador."
 }
