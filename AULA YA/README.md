@@ -29,6 +29,23 @@ python3 -m http.server 8000
 # abre http://localhost:8000 en el navegador
 ```
 
+## Personalizar a Niko
+
+Inicia sesión como estudiante y abre **Mi perfil → ¡Personaliza a Niko!**
+o **Gamificación → Abrir el vestidor de Niko**. En el vestidor puedes
+desbloquear gestos, ropa y accesorios con las monedas ganadas en las
+actividades, y equipar sin costo adicional los artículos desbloqueados.
+Las monedas, los artículos y la selección equipada se guardan en el estado
+local de cada cuenta del dispositivo. Los gestos usan los sprites existentes
+de Niko; la ropa y los accesorios se muestran como insignias porque el
+proyecto aún no incluye sprites superpuestos para esas prendas.
+
+**Prueba rápida:** inicia sesión con una cuenta demo de estudiante (PIN
+`1234`), completa el reto de Fracciones equivalentes para ganar monedas,
+abre el vestidor desde el perfil, compra una prenda y tóquela otra vez para
+equiparla. El saldo y la vista previa deben actualizarse, y conservarse al
+recargar la página.
+
 ## Estructura
 
 ```

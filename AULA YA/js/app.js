@@ -270,7 +270,7 @@ setInterval(updateConnStatusUI, 3000); // estado de conexión y sincronización 
 // Router
 // ---------------------------------------------------------------------
 
-const STUDENT_ROUTES = new Set(["inicio", "notificaciones", "clase", "tema", "video", "ejercicios", "gamificacion", "perfil", "ranking", "futuro", "niko-chat"]);
+const STUDENT_ROUTES = new Set(["inicio", "notificaciones", "clase", "tema", "video", "ejercicios", "gamificacion", "perfil", "ranking", "futuro", "niko-chat", "vestidor"]);
 const TEACHER_SECTIONS = new Set(["inicio", "clases", "clase", "recomendaciones", "seguimiento", "orientacion", "evaluaciones", "comunicaciones"]);
 
 function render() {
@@ -340,6 +340,7 @@ function render() {
     case "ejercicios": html = renderEjercicios(param || "fracciones"); break;
     case "gamificacion": html = renderGamificacion(); break;
     case "perfil": html = renderPerfil(); break;
+    case "vestidor": html = renderNikoWardrobe(); break;
     case "ranking": html = renderRanking(); break;
     case "futuro": html = renderFuturo(); break;
     case "niko-chat": html = renderNikoChat(); break;
@@ -1254,14 +1255,42 @@ function renderGamificacion() {
       <div class="rank-card-head"><div><span class="rank-kicker">RANKING DE MI SALÓN</span><h3>${getStudentGroupLabel()}</h3></div><button class="btn btn-soft btn-sm" data-nav="ranking">Ver ranking</button></div>
       ${rank.length ? rank.map((s,i)=>`<div class="rank-row ${s.isCurrent?"current":""}"><span class="rank-pos">${i+1}</span>${renderAvatar(s.avatar,s.name,40)}<div class="rank-name"><b>${s.name}${s.isCurrent?" · Tú":""}</b><small>${s.xp} XP</small></div></div>`).join("") : `<div class="empty-note">Cuando haya estudiantes en tu salón, aparecerán aquí.</div>`}
     </div>
-    <div class="card"><div class="section-title" style="margin-top:0;">Tus monedas</div><p class="hint">Gana monedas completando actividades y úsalas para personalizar tu avatar desde tu perfil.</p><button class="btn btn-outline" data-nav="perfil">Personalizar mi avatar</button></div>
+    <div class="card"><div class="section-title" style="margin-top:0;">Tus monedas</div><p class="hint">Gana monedas completando actividades y úsalas para personalizar a Niko en su vestidor.</p><button class="btn btn-outline" data-nav="vestidor">Abrir el vestidor de Niko</button></div>
   </div>`;
 }
 // ---------------------------------------------------------------------
 // Pantalla 7 — Perfil y progreso
 // ---------------------------------------------------------------------
 
+const AVATAR_CATEGORY_KEYS = {
+  genero: "gender",
+  piel: "skin",
+  cabello: "hair",
+  ojos: "eyes",
+  nariz: "nose",
+  boca: "mouth",
+  ropa: "outfit",
+  accesorio: "accessory",
+  fondo: "background",
+};
+const AVATAR_CATEGORY_LABELS = [
+  ["genero", "Género"],
+  ["piel", "Piel"],
+  ["cabello", "Cabello"],
+  ["ojos", "Ojos"],
+  ["nariz", "Nariz"],
+  ["boca", "Boca"],
+  ["ropa", "Ropa"],
+  ["accesorio", "Accesorios"],
+  ["fondo", "Fondo"],
+];
+let selectedAvatarCategory = "genero";
+
 function avatarOption(category,id){ return (AVATAR_SHOP[category]||[]).find(x=>x.id===id)||null; }
+function focusAvatarCategoryTab(){
+  const tab=document.querySelector(`[data-avatar-category="${selectedAvatarCategory}"]`);
+  if(tab){tab.focus({preventScroll:true});tab.scrollIntoView({block:"nearest",inline:"nearest"});}
+}
 function avatarGenderFromConfig(a){
   const g=String(a.gender||"").toLowerCase();
   return g.includes("male") ? "male" : g.includes("neutral") ? "neutral" : "female";
@@ -1299,10 +1328,124 @@ function renderRanking(){
     ${me>=0?`<div class="rank-me">Tu posición actual: <strong>#${me+1}</strong> · ${rows[me].xp} XP</div>`:""}</div>`;
 }
 function renderAvatarEditor(){
-  const a=Object.assign({skin:"skin-1",hair:"hair-1",shirt:"shirt-1",accessory:"accessory-none",background:"bg-1"},STATE.avatar||{});
-  const cats=[["genero","Género"],["piel","Piel"],["cabello","Cabello"],["ojos","Ojos"],["nariz","Nariz"],["boca","Boca"],["ropa","Ropa"],["accesorio","Accesorios"],["fondo","Fondo"]];
-  return `<div class="avatar-editor"><div class="avatar-editor-preview">${renderAvatar(a,STATE.student.name,120)}<div class="avatar-coins">${icon("coin",14)} ${STATE.coins}</div></div>
-    ${cats.map(([key,label])=>`<div class="avatar-category"><div class="section-title">${label}</div><div class="avatar-options">${(AVATAR_SHOP[key]||[]).map(it=>{const owned=(STATE.avatarOwned||[]).includes(it.id),active=Object.values(a).includes(it.id);return `<button class="avatar-option ${active?"active":""} ${owned?"owned":""}" data-avatar-option="${key}:${it.id}"><span class="avatar-option-icon">${it.icon}</span><b>${it.label}</b><small>${owned?(active?"Usando":"Usar"):(icon("coin",12)+" "+it.price)}</small></button>`;}).join("")}</div></div>`).join("")}
+  const a=Object.assign({},DEFAULT_STATE.avatar,STATE.avatar||{});
+  const selectedCategory=AVATAR_CATEGORY_LABELS.some(([key])=>key===selectedAvatarCategory)?selectedAvatarCategory:"genero";
+  const selectedKey=AVATAR_CATEGORY_KEYS[selectedCategory];
+  const owned=Array.isArray(STATE.avatarOwned)?STATE.avatarOwned:[];
+  const allItems=Object.values(AVATAR_SHOP).flat();
+  const unlockedCount=allItems.filter((item)=>owned.includes(item.id)).length;
+  const activeItem=avatarOption(selectedCategory,a[selectedKey]);
+  const items=AVATAR_SHOP[selectedCategory]||[];
+  return `<div class="avatar-editor">
+    <div class="avatar-editor-hero">
+      <div class="avatar-editor-copy"><span class="avatar-editor-kicker">TU PERSONAJE</span><h3>¡Este avatar eres tú!</h3><p>Cámbialo cuando quieras. Tu estilo se guarda automáticamente.</p></div>
+      <div class="avatar-editor-stage">
+        <span class="avatar-stage-spark spark-one" aria-hidden="true">✦</span>
+        <span class="avatar-stage-spark spark-two" aria-hidden="true">✧</span>
+        ${renderAvatar(a,STATE.student.name,154)}
+        <span class="avatar-stage-level">NIVEL ${STATE.level}</span>
+      </div>
+      <div class="avatar-editor-meta">
+        <div class="avatar-editor-name"><strong>${STATE.student.name||"Mi avatar"}</strong><span>${activeItem?activeItem.label:"Tu estilo personalizado"}</span></div>
+        <div class="avatar-editor-wallet">${icon("coin",16)}<strong>${STATE.coins}</strong><span>monedas</span></div>
+      </div>
+      <div class="avatar-editor-progress"><span><b>${unlockedCount}</b> de ${allItems.length} estilos desbloqueados</span><button type="button" data-avatar-reset>Restablecer</button></div>
+    </div>
+    <div class="avatar-builder-heading"><div><span class="avatar-editor-kicker">TALLER CREATIVO</span><h3>Elige qué personalizar</h3></div><span class="avatar-builder-step">${items.length} opciones</span></div>
+    <div class="avatar-category-tabs" role="tablist" aria-label="Categorías del avatar">
+      ${AVATAR_CATEGORY_LABELS.map(([key,label])=>`<button type="button" id="avatar-tab-${key}" role="tab" aria-controls="avatar-panel" aria-selected="${selectedCategory===key}" tabindex="${selectedCategory===key?"0":"-1"}" class="avatar-category-tab ${selectedCategory===key?"active":""}" data-avatar-category="${key}">${label}</button>`).join("")}
+    </div>
+    <section id="avatar-panel" class="avatar-category-panel" role="tabpanel" aria-labelledby="avatar-tab-${selectedCategory}" tabindex="0">
+      <div class="avatar-category-intro"><strong>${activeItem?`Estás usando: ${activeItem.label}`:"Escoge tu favorito"}</strong><span>Las opciones nuevas se compran con tus monedas.</span></div>
+      <div class="avatar-options">${items.map((item)=>{
+        const isOwned=owned.includes(item.id);
+        const isActive=a[selectedKey]===item.id;
+        const missing=Math.max(0,item.price-STATE.coins);
+        const action=isActive?"En uso":isOwned?"Equipar":missing?`Te faltan ${missing} monedas`:`Desbloquear · ${item.price}`;
+        const description=isActive?`${item.label}, actualmente seleccionado`:isOwned?`Equipar ${item.label}, gratis`:missing?`${item.label}: te faltan ${missing} monedas`:`Desbloquear ${item.label} por ${item.price} monedas`;
+        return `<button type="button" class="avatar-option ${isActive?"active":""} ${isOwned?"owned":"locked"}" data-avatar-option="${selectedCategory}:${item.id}" aria-label="${description}" aria-pressed="${isActive}" title="${description}">
+          <span class="avatar-option-icon">${item.icon}</span><b>${item.label}</b>
+          <small class="avatar-option-status">${isActive?`<span aria-hidden="true">✓</span> En uso`:isOwned?"Equipar":`${icon("coin",12)} ${item.price} ${missing?`· faltan ${missing}`:"· desbloquear"}`}</small>
+        </button>`;
+      }).join("")}</div>
+    </section>
+  </div>`;
+}
+
+function nikoWardrobeItem(category, id) {
+  return (NIKO_WARDROBE_ITEMS[category] || []).find((item) => item.id === id) || null;
+}
+
+function nikoWardrobeItemState(item) {
+  return (STATE.nikoWardrobe?.unlocked || []).includes(item.id) ? "desbloqueado" : "bloqueado";
+}
+
+function purchaseNikoItem(item) {
+  const wardrobe = normalizeNikoWardrobe(STATE.nikoWardrobe);
+  if (wardrobe.unlocked.includes(item.id)) return "unlocked";
+  if (STATE.coins < item.precio) return "insufficient";
+  updateState({
+    coins: STATE.coins - item.precio,
+    nikoWardrobe: {
+      ...wardrobe,
+      unlocked: wardrobe.unlocked.concat(item.id),
+    },
+  });
+  return "purchased";
+}
+
+function equipNikoItem(item) {
+  const wardrobe = normalizeNikoWardrobe(STATE.nikoWardrobe);
+  if (!wardrobe.unlocked.includes(item.id)) return false;
+  updateState({
+    nikoWardrobe: {
+      ...wardrobe,
+      equipped: { ...wardrobe.equipped, [item.categoria]: item.id },
+    },
+  });
+  return true;
+}
+
+function renderNikoWardrobeAvatar() {
+  const wardrobe = normalizeNikoWardrobe(STATE.nikoWardrobe);
+  const gesture = nikoWardrobeItem("gestos", wardrobe.equipped.gestos);
+  const outfit = nikoWardrobeItem("ropa", wardrobe.equipped.ropa);
+  const accessory = nikoWardrobeItem("accesorios", wardrobe.equipped.accesorios);
+  return `<div class="niko-wardrobe-preview" aria-label="Vista previa de Niko personalizado">
+    <span class="niko-wearable outfit" title="Ropa equipada: ${outfit.nombre}">${outfit.icono}</span>
+    ${nikoImg(gesture.pose, "niko-avatar-xl", `Niko: ${gesture.nombre}`)}
+    <span class="niko-wearable accessory" title="Accesorio equipado: ${accessory.nombre}">${accessory.icono}</span>
+    <div class="niko-equipped-labels"><span>${outfit.icono} ${outfit.nombre}</span><span>${accessory.icono} ${accessory.nombre}</span></div>
+  </div>`;
+}
+
+function renderNikoWardrobe() {
+  const categories = [
+    ["gestos", "Gestos", "¡Elige cómo se expresa Niko!"],
+    ["ropa", "Ropa", "Prueba un nuevo look para la aventura."],
+    ["accesorios", "Accesorios", "Un detalle especial para completar su estilo."],
+  ];
+  const wardrobe = normalizeNikoWardrobe(STATE.nikoWardrobe);
+  return `<div class="screen niko-wardrobe-screen">
+    <div class="back-row"><button class="icon-btn" data-nav="perfil" aria-label="Volver al perfil">←</button><h2>Vestidor de Niko</h2><div class="pill coins">${icon("coin",16)} ${STATE.coins}</div></div>
+    <p class="hint">Completa retos para ganar monedas, desbloquea nuevos estilos y elige cómo acompañará Niko tus aventuras.</p>
+    <section class="niko-wardrobe-stage card">${renderNikoWardrobeAvatar()}<div class="niko-stage-caption"><strong>¡Este es Niko!</strong><span>Tu estilo se guarda en tu cuenta.</span></div></section>
+    ${categories.map(([category, title, description]) => `<section class="niko-shop-category">
+      <div class="niko-shop-heading"><div><h3>${title}</h3><p>${description}</p></div></div>
+      <div class="niko-shop-grid">${NIKO_WARDROBE_ITEMS[category].map((item) => {
+        const unlocked = nikoWardrobeItemState(item) === "desbloqueado";
+        const active = wardrobe.equipped[category] === item.id;
+        const missing = Math.max(0, item.precio - STATE.coins);
+        const action = unlocked ? (active ? "En uso" : "Equipar") : (missing ? `Te faltan ${missing} monedas` : `Comprar · ${item.precio}`);
+        const accessibleAction = unlocked ? (active ? "Ya está equipado" : `Equipar ${item.nombre}`) : (missing ? `Te faltan ${missing} monedas para ${item.nombre}` : `Comprar ${item.nombre} por ${item.precio} monedas`);
+        return `<button class="niko-shop-item ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""}" data-niko-item="${category}:${item.id}" title="${accessibleAction}" aria-label="${accessibleAction}" ${active ? 'aria-pressed="true"' : ""}>
+          <span class="niko-shop-art">${category === "gestos" ? `<img src="${item.visualRef}" alt="" loading="lazy">` : item.visualRef}</span>
+          <span class="niko-shop-name">${item.nombre}</span>
+          <span class="niko-shop-action">${unlocked ? action : `${icon("coin",12)} ${item.precio} · ${missing ? `faltan ${missing}` : "Comprar"}`}</span>
+        </button>`;
+      }).join("")}</div>
+    </section>`).join("")}
+    <p class="niko-wardrobe-footnote">Las prendas y accesorios se muestran como insignias en la vista previa; podrás verlos con sus sprites propios cuando estén disponibles.</p>
   </div>`;
 }
 
@@ -1311,7 +1454,8 @@ function renderPerfil() {
   const xpPct=Math.min(100,Math.round((STATE.xp/STATE.xpGoal)*100)),sessions=loadActiveSessions();
   return `<div class="screen"><div class="top-header"><h2>Mi perfil</h2><div class="pill coins">${icon("coin",16)} ${STATE.coins}</div></div>
     <div class="profile-head">${renderAvatar(STATE.avatar,STATE.student.name,76)}<div><h2>${STATE.student.name}</h2><small>Estudiante · ${STATE.student.grade} · Salón ${STATE.student.salon||"—"}</small></div></div>
-    <div class="card avatar-profile-card"><div><h3>Mi avatar</h3><p class="hint">Crea y modifica tu avatar usando las monedas que ganas en AULA.</p></div>${renderAvatarEditor()}</div>
+    <button class="niko-wardrobe-entry" data-nav="vestidor"><span class="niko-entry-avatar">${renderNikoWardrobeAvatar()}</span><span class="niko-entry-copy"><strong>¡Personaliza a Niko!</strong><small>Desbloquea gestos, ropa y accesorios con tus monedas.</small><b>Ir al vestidor <span aria-hidden="true">→</span></b></span></button>
+    <div class="card avatar-profile-card">${renderAvatarEditor()}</div>
     <div class="level-card"><div class="row"><span>Nivel ${STATE.level}</span><span>${STATE.xp} / ${STATE.xpGoal} XP</span></div><div class="xp-bar"><span style="width:${xpPct}%;"></span></div></div>
     <div class="stat-grid"><div class="stat-card"><div class="n">${icon("coin",16)} ${STATE.coins}</div><div class="l">MONEDAS</div></div><div class="stat-card"><div class="n">${icon("flame",16)} ${STATE.streak}</div><div class="l">RACHA</div></div><div class="stat-card"><div class="n">${icon("target",16)} ${STATE.retosCompletados}</div><div class="l">RETOS</div></div></div>
     <button class="rank-banner" data-nav="ranking"><span class="rank-banner-icon">#</span><span><b>Ranking de mi salón</b><small>${getStudentGroupLabel()}</small></span><span>›</span></button>
@@ -2702,9 +2846,54 @@ document.addEventListener("click", (e) => {
   const navBtn = el.closest("[data-nav]");
   if (navBtn) { go(navBtn.dataset.nav); return; }
 
+  const avatarCategoryBtn = el.closest("[data-avatar-category]");
+  if (avatarCategoryBtn) {
+    selectedAvatarCategory = avatarCategoryBtn.dataset.avatarCategory;
+    render();
+    focusAvatarCategoryTab();
+    return;
+  }
+
+  const avatarResetBtn = el.closest("[data-avatar-reset]");
+  if (avatarResetBtn) {
+    updateState({ avatar: structuredClone(DEFAULT_STATE.avatar) });
+    showToast("Avatar restablecido. Tus artículos desbloqueados siguen siendo tuyos.");
+    render();
+    return;
+  }
+
   // barra de navegación inferior (Inicio / Explorar / Retos / Niko / Perfil)
   const navItem = el.closest(".nav-item[data-route]");
   if (navItem) { go(navItem.dataset.route); return; }
+
+  const nikoItemButton = el.closest("[data-niko-item]");
+  if (nikoItemButton) {
+    const [category, itemId] = nikoItemButton.dataset.nikoItem.split(":");
+    const item = nikoWardrobeItem(category, itemId);
+    if (!item) return;
+    const wardrobe = normalizeNikoWardrobe(STATE.nikoWardrobe);
+    if (wardrobe.unlocked.includes(item.id)) {
+      if (wardrobe.equipped[category] === item.id) {
+        showToast(`${item.nombre} ya está en uso.`);
+        return;
+      }
+      if (equipNikoItem(item)) {
+        showToast(`¡Niko ya lleva ${item.nombre}!`);
+        render();
+      }
+      return;
+    }
+    const result = purchaseNikoItem(item);
+    if (result === "insufficient") {
+      showToast(`Te faltan ${item.precio - STATE.coins} monedas para desbloquear ${item.nombre}.`);
+      return;
+    }
+    if (result === "purchased") {
+      showToast(`¡${item.nombre} desbloqueado! Tócalo otra vez para equiparlo.`);
+      render();
+    }
+    return;
+  }
 
   // notificaciones: cerrar
   const dismissBtn = el.closest("[data-dismiss]");
@@ -2943,9 +3132,10 @@ document.addEventListener("click", (e) => {
   if(avatarBtn){
     const [category,itemId]=avatarBtn.dataset.avatarOption.split(":");
     const item=avatarOption(category,itemId); if(!item) return;
-    const key=category==="piel"?"skin":category==="cabello"?"hair":category==="camiseta"?"shirt":category==="accesorio"?"accessory":"background";
-    const current=Object.assign({skin:"skin-1",hair:"hair-1",shirt:"shirt-1",accessory:"accessory-none",background:"bg-1"},STATE.avatar||{});
-    const owned=Array.isArray(STATE.avatarOwned)?STATE.avatarOwned:["skin-1","hair-1","shirt-1","accessory-none","bg-1"];
+    const key=AVATAR_CATEGORY_KEYS[category]; if(!key) return;
+    const current=Object.assign({},DEFAULT_STATE.avatar,STATE.avatar||{});
+    const owned=Array.isArray(STATE.avatarOwned)?STATE.avatarOwned:[];
+    if(current[key]===item.id){ showToast(`${item.label} ya está seleccionado.`); return; }
     if(!owned.includes(item.id)){
       if(STATE.coins<item.price){showToast("Te faltan "+(item.price-STATE.coins)+" monedas.");return;}
       updateState({avatarOwned:owned.concat(item.id),coins:STATE.coins-item.price});
@@ -3310,6 +3500,19 @@ document.addEventListener("change", (e) => {
 
 // Enter para enviar mensajes de chat
 document.addEventListener("keydown", (e) => {
+  if (e.target instanceof Element && ["ArrowRight","ArrowLeft","Home","End"].includes(e.key)) {
+    const currentTab=e.target.closest("[data-avatar-category]");
+    if(currentTab){
+      const index=AVATAR_CATEGORY_LABELS.findIndex(([key])=>key===currentTab.dataset.avatarCategory);
+      const nextIndex=e.key==="Home"?0:e.key==="End"?AVATAR_CATEGORY_LABELS.length-1:
+        (index+(e.key==="ArrowRight"?1:-1)+AVATAR_CATEGORY_LABELS.length)%AVATAR_CATEGORY_LABELS.length;
+      e.preventDefault();
+      selectedAvatarCategory=AVATAR_CATEGORY_LABELS[nextIndex][0];
+      render();
+      focusAvatarCategoryTab();
+      return;
+    }
+  }
   if (e.key !== "Enter") return;
   if (e.target.id === "bv-recuperar-correo") { e.preventDefault(); requestAccountRecovery(); return; }
   if (e.target.id === "bv-recuperar-codigo") { e.preventDefault(); verifyAccountRecovery(); return; }

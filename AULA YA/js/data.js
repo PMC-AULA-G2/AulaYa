@@ -4,6 +4,56 @@
 
 const STORAGE_KEY = "aula_state_v1";
 
+const NIKO_WARDROBE_ITEMS = {
+  gestos: [
+    { id: "niko-saludo", nombre: "Saludo amistoso", categoria: "gestos", precio: 0, visualRef: "icons/niko/estado-saludo.png", pose: "saludo", estado: "desbloqueado", icono: "👋" },
+    { id: "niko-celebracion", nombre: "¡Lo logré!", categoria: "gestos", precio: 60, visualRef: "icons/niko/celebracion-puno.png", pose: "celebracionPuno", estado: "bloqueado", icono: "🎉" },
+    { id: "niko-lector", nombre: "Modo lectura", categoria: "gestos", precio: 40, visualRef: "icons/niko/leyendo-libro.png", pose: "leyendoLibro", estado: "bloqueado", icono: "📚" },
+    { id: "niko-musica", nombre: "¡A bailar!", categoria: "gestos", precio: 70, visualRef: "icons/niko/escucha-musica.png", pose: "escuchaMusica", estado: "bloqueado", icono: "🎵" },
+  ],
+  ropa: [
+    { id: "niko-uniforme", nombre: "Uniforme AULA", categoria: "ropa", precio: 0, visualRef: "👕", estado: "desbloqueado", icono: "👕" },
+    { id: "niko-camiseta-azul", nombre: "Camiseta exploradora", categoria: "ropa", precio: 80, visualRef: "🧥", estado: "bloqueado", icono: "🧥" },
+    { id: "niko-sudadera-lila", nombre: "Sudadera espacial", categoria: "ropa", precio: 120, visualRef: "🧥", estado: "bloqueado", icono: "🪐" },
+    { id: "niko-camiseta-estrella", nombre: "Camiseta estrella", categoria: "ropa", precio: 100, visualRef: "👕", estado: "bloqueado", icono: "⭐" },
+  ],
+  accesorios: [
+    { id: "niko-sin-accesorio", nombre: "Sin accesorio", categoria: "accesorios", precio: 0, visualRef: "—", estado: "desbloqueado", icono: "✨" },
+    { id: "niko-audifonos", nombre: "Audífonos", categoria: "accesorios", precio: 60, visualRef: "🎧", estado: "bloqueado", icono: "🎧" },
+    { id: "niko-gorra", nombre: "Gorra aventurera", categoria: "accesorios", precio: 80, visualRef: "🧢", estado: "bloqueado", icono: "🧢" },
+    { id: "niko-lentes", nombre: "Lentes curiosos", categoria: "accesorios", precio: 90, visualRef: "🤓", estado: "bloqueado", icono: "🤓" },
+  ],
+};
+
+const DEFAULT_NIKO_WARDROBE = {
+  unlocked: ["niko-saludo", "niko-uniforme", "niko-sin-accesorio"],
+  equipped: {
+    gestos: "niko-saludo",
+    ropa: "niko-uniforme",
+    accesorios: "niko-sin-accesorio",
+  },
+};
+
+function normalizeNikoWardrobe(wardrobe) {
+  const saved = wardrobe && typeof wardrobe === "object" ? wardrobe : {};
+  const unlocked = Array.isArray(saved.unlocked) ? saved.unlocked : DEFAULT_NIKO_WARDROBE.unlocked;
+  const equipped = saved.equipped && typeof saved.equipped === "object" ? saved.equipped : {};
+  const normalized = {
+    unlocked: [...new Set([...DEFAULT_NIKO_WARDROBE.unlocked, ...unlocked.filter((id) =>
+      Object.values(NIKO_WARDROBE_ITEMS).some((items) => items.some((item) => item.id === id))
+    )])],
+    equipped: {},
+  };
+  for (const category of Object.keys(NIKO_WARDROBE_ITEMS)) {
+    const selected = equipped[category];
+    normalized.equipped[category] = normalized.unlocked.includes(selected)
+      && NIKO_WARDROBE_ITEMS[category].some((item) => item.id === selected)
+      ? selected
+      : DEFAULT_NIKO_WARDROBE.equipped[category];
+  }
+  return normalized;
+}
+
 const DEFAULT_STATE = {
   student: { name: "Alex", grade: "9°" },
   coins: 0,
@@ -16,6 +66,7 @@ const DEFAULT_STATE = {
   ownedItems: ["jacket-green"],
   avatar: { gender:"gender-female", skin:"skin-1", hair:"hair-f-1", eyes:"eyes-1", nose:"nose-1", mouth:"mouth-1", outfit:"outfit-1", accessory:"accessory-none", background:"bg-1" },
   avatarOwned: ["gender-female","skin-1","hair-f-1","eyes-1","nose-1","mouth-1","outfit-1","accessory-none","bg-1"],
+  nikoWardrobe: structuredClone(DEFAULT_NIKO_WARDROBE),
   quizDone: {},
   completedResources: {},
   notifications: null, // null = usar semilla por defecto la primera vez
@@ -45,7 +96,9 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
-    return Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    const state = Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    state.nikoWardrobe = normalizeNikoWardrobe(parsed.nikoWardrobe);
+    return state;
   } catch (e) {
     return structuredClone(DEFAULT_STATE);
   }
@@ -63,6 +116,7 @@ function loadUserState(user) {
   try {
     const all = JSON.parse(localStorage.getItem(USER_STATE_KEY) || "{}");
     const saved=Object.assign(structuredClone(DEFAULT_STATE), all[key] || {});
+    saved.nikoWardrobe=normalizeNikoWardrobe(saved.nikoWardrobe);
     if (Array.isArray(user?.notificationFeed)) {
       const existing=Array.isArray(saved.notifications)?saved.notifications:[];
       const ids=new Set(existing.map(n=>n.id));
