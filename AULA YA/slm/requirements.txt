@@ -1,0 +1,15 @@
+# Runtime/API
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.8
+
+# Optional: training on PC/server (NOT required on the phone)
+# torch>=2.2
+# transformers>=4.45
+# datasets>=2.20
+# peft>=0.12
+# accelerate>=0.34
+# bitsandbytes>=0.43; platform_system != "Windows"
+
+# Optional Android/local inference is handled by a mobile runtime
+# such as llama.cpp / MLC / ExecuTorch depending on the final APK.

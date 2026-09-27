@@ -1,0 +1,261 @@
+{
+  "1": {
+    "Español": [
+      "Vocales y sonidos",
+      "Lectura de palabras",
+      "Oraciones simples",
+      "Comprensión de cuentos",
+      "Mayúsculas y punto"
+    ],
+    "Matemáticas": [
+      "Números del 0 al 100",
+      "Suma",
+      "Resta",
+      "Figuras geométricas",
+      "Medición"
+    ],
+    "Ciencias": [
+      "Mi cuerpo",
+      "Cinco sentidos",
+      "Animales y plantas",
+      "El agua",
+      "El clima"
+    ],
+    "Sociales": [
+      "Mi familia",
+      "Mi escuela",
+      "Normas y convivencia",
+      "Mi comunidad",
+      "Símbolos de Colombia"
+    ],
+    "Inglés": [
+      "Greetings",
+      "Numbers 1–20",
+      "Colors",
+      "Family",
+      "School objects"
+    ]
+  },
+  "2": {
+    "Español": [
+      "Comprensión lectora",
+      "Sustantivo y verbo",
+      "Adjetivos",
+      "Oraciones y párrafos",
+      "Sinónimos y antónimos"
+    ],
+    "Matemáticas": [
+      "Números hasta 1000",
+      "Suma con llevadas",
+      "Resta con reagrupación",
+      "Multiplicación inicial",
+      "Fracciones básicas"
+    ],
+    "Ciencias": [
+      "Seres vivos",
+      "Ciclo de vida",
+      "Alimentación saludable",
+      "Estados del agua",
+      "Fuerzas y movimiento"
+    ],
+    "Sociales": [
+      "Barrio y municipio",
+      "Campo y ciudad",
+      "Oficios y profesiones",
+      "Derechos y deberes",
+      "Pasado y presente"
+    ],
+    "Inglés": [
+      "Greetings",
+      "Numbers and age",
+      "Colors and clothes",
+      "Family members",
+      "Daily routines"
+    ]
+  },
+  "3": {
+    "Español": [
+      "Idea principal",
+      "Tipos de texto",
+      "Párrafo",
+      "Verbos y tiempos",
+      "Ortografía básica"
+    ],
+    "Matemáticas": [
+      "Números naturales",
+      "Multiplicación",
+      "División",
+      "Fracciones",
+      "Perímetro"
+    ],
+    "Ciencias": [
+      "Materia",
+      "Cambios de estado",
+      "Cadenas alimentarias",
+      "Sistema solar",
+      "Fuerza y energía"
+    ],
+    "Sociales": [
+      "Regiones de Colombia",
+      "Paisaje rural y urbano",
+      "Gobierno local",
+      "Historia de la comunidad",
+      "Recursos naturales"
+    ],
+    "Inglés": [
+      "Present simple",
+      "There is / There are",
+      "Food and drinks",
+      "Places",
+      "Weather"
+    ]
+  },
+  "4": {
+    "Español": [
+      "Comprensión inferencial",
+      "Texto informativo",
+      "Gramática",
+      "Conectores",
+      "Ortografía y acentuación"
+    ],
+    "Matemáticas": [
+      "Números grandes",
+      "Multiplicación y división",
+      "Fracciones equivalentes",
+      "Decimales",
+      "Área y perímetro"
+    ],
+    "Ciencias": [
+      "Células y seres vivos",
+      "Sistemas del cuerpo",
+      "Ecosistemas",
+      "Ciclo del agua",
+      "Energía"
+    ],
+    "Sociales": [
+      "Colombia y sus regiones",
+      "Constitución y derechos",
+      "Democracia escolar",
+      "Economía",
+      "Mapas y puntos cardinales"
+    ],
+    "Inglés": [
+      "Present simple",
+      "Present continuous",
+      "Can / can’t",
+      "Comparatives",
+      "Directions"
+    ]
+  },
+  "5": {
+    "Español": [
+      "Idea principal e inferencias",
+      "Géneros literarios",
+      "Texto argumentativo",
+      "Gramática",
+      "Producción escrita"
+    ],
+    "Matemáticas": [
+      "Fracciones",
+      "Decimales",
+      "Porcentajes",
+      "Múltiplos y divisores",
+      "Área y volumen"
+    ],
+    "Ciencias": [
+      "Célula",
+      "Sistemas del cuerpo",
+      "Reproducción",
+      "Materia y energía",
+      "Impacto ambiental"
+    ],
+    "Sociales": [
+      "Independencia de Colombia",
+      "Regiones y población",
+      "Estado y ciudadanía",
+      "Derechos humanos",
+      "Economía colombiana"
+    ],
+    "Inglés": [
+      "Past simple básico",
+      "Going to",
+      "Present perfect introductorio",
+      "Comparatives and superlatives",
+      "Daily life"
+    ]
+  },
+  "9": {
+    "Español": [
+      "Comprensión crítica",
+      "Literatura latinoamericana",
+      "Argumentación",
+      "Medios y lenguaje",
+      "Ensayo"
+    ],
+    "Matemáticas": [
+      "Números reales",
+      "Potenciación y radicación",
+      "Expresiones algebraicas",
+      "Ecuaciones",
+      "Funciones lineales"
+    ],
+    "Ciencias": [
+      "Genética",
+      "Evolución",
+      "Ecosistemas",
+      "Átomos y tabla periódica",
+      "Reacciones químicas"
+    ],
+    "Sociales": [
+      "Constitución de 1991",
+      "Colombia contemporánea",
+      "Globalización",
+      "Economía y desigualdad",
+      "Conflictos y paz"
+    ],
+    "Inglés": [
+      "Past simple vs present perfect",
+      "Future forms",
+      "Conditionals",
+      "Modals",
+      "Reading strategies"
+    ]
+  },
+  "10": {
+    "Español": [
+      "Análisis literario",
+      "Ensayo argumentativo",
+      "Lectura crítica",
+      "Literatura colombiana",
+      "Investigación y citación"
+    ],
+    "Matemáticas": [
+      "Funciones",
+      "Ecuaciones y sistemas",
+      "Trigonometría",
+      "Geometría analítica",
+      "Probabilidad y estadística"
+    ],
+    "Ciencias": [
+      "Genética y biotecnología",
+      "Ecología",
+      "Química de la materia",
+      "Estequiometría básica",
+      "Cinemática y energía"
+    ],
+    "Sociales": [
+      "Estado y democracia",
+      "Derechos humanos",
+      "Economía",
+      "Globalización",
+      "Historia de Colombia siglo XX"
+    ],
+    "Inglés": [
+      "Advanced reading",
+      "Conditionals",
+      "Passive voice",
+      "Reported speech",
+      "Academic vocabulary"
+    ]
+  }
+}

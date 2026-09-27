@@ -1,0 +1,10 @@
+{
+  "source": "DANE",
+  "dataset": "Educación Formal 2024",
+  "file": "BDATOS-EDUC-2024.zip",
+  "generated": "2026-09-11",
+  "filter": "AREA_NOMBRE == Rural",
+  "records": 37310,
+  "id_field": "SEDE_CODIGO",
+  "catalog_file": "data/colegios_rurales_2024.json"
+}

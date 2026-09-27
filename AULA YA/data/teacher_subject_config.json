@@ -1,0 +1,40 @@
+{
+  "grades": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "9",
+    "10"
+  ],
+  "subjects": [
+    {
+      "id": "matematicas",
+      "name": "Matemáticas"
+    },
+    {
+      "id": "espanol",
+      "name": "Español"
+    },
+    {
+      "id": "ciencias_naturales",
+      "name": "Ciencias Naturales"
+    },
+    {
+      "id": "ciencias_sociales",
+      "name": "Ciencias Sociales"
+    },
+    {
+      "id": "ingles",
+      "name": "Inglés"
+    }
+  ],
+  "behavior": {
+    "teacher_selects_multiple_subjects": true,
+    "teacher_selects_multiple_grades": true,
+    "student_content_is_unaffected": true,
+    "teacher_dashboard_filters_to_selected_subjects_and_grades": true,
+    "multigrade_supported": true
+  }
+}

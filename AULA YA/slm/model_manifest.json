@@ -1,0 +1,21 @@
+{
+  "name": "AULA YA Local SLM",
+  "runtime": "Transformers.js 4.3.0 + ONNX Runtime Web",
+  "primary_model": {
+    "id": "onnx-community/Qwen2.5-0.5B-Instruct",
+    "quantization": "q4",
+    "approx_download_mb": 786,
+    "role": "principal",
+    "source": "https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct"
+  },
+  "fallback_model": {
+    "id": "onnx-community/SmolLM2-135M-Instruct-ONNX",
+    "quantization": "q4",
+    "approx_download_mb": 181,
+    "role": "dispositivo_limitado",
+    "source": "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX"
+  },
+  "offline_behavior": "El modelo se descarga la primera vez que hay internet y Transformers.js lo conserva en caché del navegador. Después puede ejecutarse sin conexión si el almacenamiento del dispositivo conserva la caché.",
+  "education_layer": "RAG local por grado + materia + tema, banco de preguntas y prompt pedagógico de AULA YA.",
+  "note": "El modelo base es preentrenado; esta versión no afirma que exista un fine-tuning propietario de AULA YA. El runtime sí ejecuta un SLM real localmente en el navegador."
+}

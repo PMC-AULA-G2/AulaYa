@@ -1,0 +1,19 @@
+{
+  "name": "AULA - Aprende hoy, llega más lejos",
+  "short_name": "AULA",
+  "description": "Plataforma educativa offline-first con tutor IA (Niko), gamificación y panel docente.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F5FBF6",
+  "theme_color": "#1F7A4C",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

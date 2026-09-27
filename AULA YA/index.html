@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>AULA — Aprende hoy, llega más lejos</title>
+<meta name="description" content="AULA: plataforma educativa offline-first con tutor IA (Niko), gamificación, camino de aprendizaje y panel docente." />
+<meta name="theme-color" content="#1F7A4C" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="AULA" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="app-shell">
+
+  <!-- ================= STUDENT APP (marco de teléfono) ================= -->
+  <div class="phone-wrap" id="student-shell">
+    <div class="status-bar">
+      <span id="clock">9:41</span>
+      <span id="conn-status" class="conn-status"></span>
+      <span class="icons">
+        <svg viewBox="0 0 20 14" width="17" height="12" fill="currentColor" aria-hidden="true"><rect x="0" y="9" width="3" height="5" rx=".5"/><rect x="5" y="6" width="3" height="8" rx=".5"/><rect x="10" y="3" width="3" height="11" rx=".5"/><rect x="15" y="0" width="3" height="14" rx=".5"/></svg>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9a14 14 0 0 1 16 0M7 12.5a9 9 0 0 1 10 0M10 16a4 4 0 0 1 4 0"/><circle cx="12" cy="19.5" r=".6" fill="currentColor" stroke="none"/></svg>
+        <svg viewBox="0 0 26 14" width="22" height="12" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1" y="1" width="21" height="12" rx="2.5"/><rect x="23" y="5" width="2" height="4" rx="1" fill="currentColor" stroke="none"/><rect x="3" y="3" width="16" height="8" rx="1" fill="currentColor" stroke="none"/></svg>
+      </span>
+    </div>
+    <main id="view-root"></main>
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-item" data-route="inicio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        Inicio
+      </button>
+      <button class="nav-item" data-route="gamificacion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H4v2a3 3 0 0 0 3 3"/><path d="M16 5h4v2a3 3 0 0 1-3 3"/><path d="M12 13v4"/><path d="M9 21h6"/><path d="M10 17h4l.5 4h-5z"/></svg>
+        Retos
+      </button>
+      <button class="nav-item" data-route="ranking">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V10"/><path d="M12 20V4"/><path d="M17 20v-7"/><path d="M4 20h16"/></svg>
+        Ranking
+      </button>
+      <button class="nav-item" data-route="niko-chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 1 1-3.2-6.4"/><path d="M21 4v5h-5"/><circle cx="9" cy="12" r="1"/><circle cx="14" cy="12" r="1"/></svg>
+        Niko
+      </button>
+      <button class="nav-item" data-route="perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+        Perfil
+      </button>
+    </nav>
+    <div class="feedback-bar" id="feedback-bar"></div>
+  </div>
+
+  <!-- ================= TEACHER PANEL (desktop, ancho completo) ================= -->
+  <div class="teacher-shell" id="teacher-shell" style="display:none;"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script id="AULA_BUILD_MIGRATION_STREAK_ZERO">
+(function(){
+  try{
+    const raw=localStorage.getItem("aula_state_v1");
+    if(!raw) return;
+    const s=JSON.parse(raw);
+    const email=s?.auth?.role==="estudiante" ? s.auth.correo : null;
+    if(!email) return;
+    const key="aula_streak_student_v3:"+String(email).toLowerCase().trim();
+    if(!localStorage.getItem(key)){
+      localStorage.setItem(key, JSON.stringify({
+        count:0,last_completed_day:null,total_lessons_completed:0,
+        achievements:[],coins_earned_from_streak:0
+      }));
+      s.streak=0;
+      s.lastActivityDate=null;
+      s.notifications=[];
+      localStorage.setItem("aula_state_v1",JSON.stringify(s));
+    }
+  }catch(e){}
+})();
+</script>
+
+<script src="js/data.js"></script>
+<script src="js/malla.js"></script>
+<script src="js/streak.js"></script>
+<script src="js/slm_curriculum.js"></script>
+<script src="js/tutor_engine.js"></script>
+<script type="module" src="js/slm_runtime.js"></script>
+<!-- AULA_BUILD_MIGRATION_STREAK_ZERO -->
+<script>
+(function(){
+  try{
+    const k="aula_state_v1", raw=localStorage.getItem(k);
+    if(!raw) return;
+    const s=JSON.parse(raw);
+    if(!s.auth){
+      s.streak=0; s.lastActivityDate=null; s.notifications=[];
+      localStorage.setItem(k,JSON.stringify(s));
+    }
+  }catch(e){}
+})();
+</script>
+
+<script src="js/microvideos.js"></script>
+<script src="js/app.js"></script>
+
+<!-- AULA: selección de materias y cursos del docente -->
+<section id="teacher-subject-setup" class="teacher-subject-setup" hidden>
+  <div class="teacher-setup-card">
+    <div class="teacher-setup-head">
+      <span class="teacher-setup-kicker">Configuración docente</span>
+      <h2>¿Qué materias y cursos dictas?</h2>
+      <p>Selecciona solo las materias que enseñas. AULA mostrará únicamente esos contenidos en tu panel.</p>
+    </div>
+
+    <div class="teacher-course-block">
+      <label for="teacher-course-select">Cursos que atiendes</label>
+      <select id="teacher-course-select" multiple aria-label="Selecciona los cursos">
+        <option value="1">1°</option><option value="2">2°</option>
+        <option value="3">3°</option><option value="4">4°</option>
+        <option value="5">5°</option><option value="8">8°</option>
+        <option value="9">9°</option><option value="10">10°</option>
+      </select>
+      <small>Puedes elegir uno o varios cursos.</small>
+    </div>
+
+    <div class="teacher-subject-block">
+      <label>Materias que dictas</label>
+      <div id="teacher-subject-grid" class="teacher-subject-grid"></div>
+      <small>Ejemplo: Inglés + Ciencias Sociales, solo Matemáticas, o las cinco materias si eres docente multigrado.</small>
+    </div>
+
+    <div class="teacher-setup-actions">
+      <button type="button" id="teacher-subject-save" class="primary-btn">Guardar configuración</button>
+    </div>
+  </div>
+</section>
+
+<style>
+.teacher-subject-setup{max-width:900px;margin:24px auto;padding:16px}
+.teacher-setup-card{background:#fff;border-radius:24px;padding:24px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.teacher-setup-kicker{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
+.teacher-setup-head h2{margin:6px 0 8px}
+.teacher-setup-head p{margin:0 0 20px;opacity:.75}
+.teacher-course-block,.teacher-subject-block{margin-top:20px}
+.teacher-course-block label,.teacher-subject-block>label{display:block;font-weight:700;margin-bottom:8px}
+#teacher-course-select{width:100%;min-height:100px;border:1px solid #d9d9d9;border-radius:14px;padding:10px;background:#fff}
+.teacher-subject-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.teacher-subject-option{border:1px solid #ddd;border-radius:16px;padding:14px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;transition:.15s}
+.teacher-subject-option input{margin-top:4px}
+.teacher-subject-option strong{display:block}
+.teacher-subject-option span{display:block;font-size:.85rem;opacity:.7;margin-top:3px}
+.teacher-subject-option:has(input:checked){border-color:#4b8f62;box-shadow:0 0 0 2px rgba(75,143,98,.12)}
+.teacher-setup-actions{display:flex;justify-content:flex-end;margin-top:22px}
+.teacher-setup-actions button{border:0;border-radius:14px;padding:13px 18px;font-weight:700;cursor:pointer}
+@media(max-width:600px){.teacher-setup-card{padding:18px;border-radius:18px}.teacher-subject-grid{grid-template-columns:1fr}.teacher-setup-actions button{width:100%}}
+</style>
+<script>
+(function(){
+  const SUBJECTS = [
+    {id:'matematicas', name:'Matemáticas', icon:'📐', desc:'Números, álgebra, geometría y estadística'},
+    {id:'espanol', name:'Español', icon:'📚', desc:'Lectura, escritura, literatura y comunicación'},
+    {id:'ciencias_naturales', name:'Ciencias Naturales', icon:'🔬', desc:'Biología, química, física y ambiente'},
+    {id:'ciencias_sociales', name:'Ciencias Sociales', icon:'🌎', desc:'Historia, geografía, ciudadanía y sociedad'},
+    {id:'ingles', name:'Inglés', icon:'🇬🇧', desc:'Inglés, comprensión y comunicación'}
+  ];
+  const root=document.getElementById('teacher-subject-setup');
+  const grid=document.getElementById('teacher-subject-grid');
+  if(!root || !grid) return;
+
+  grid.innerHTML=SUBJECTS.map(s=>`
+    <label class="teacher-subject-option">
+      <input type="checkbox" value="${s.id}">
+      <div><strong>${s.icon} ${s.name}</strong><span>${s.desc}</span></div>
+    </label>`).join('');
+
+  window.AULA_TEACHER_SUBJECTS = SUBJECTS;
+
+  window.AULA_getTeacherConfig = function(){
+    const courses=[...document.getElementById('teacher-course-select').selectedOptions].map(o=>o.value);
+    const subjects=[...grid.querySelectorAll('input:checked')].map(i=>i.value);
+    return {courses,subjects};
+  };
+
+  window.AULA_setTeacherConfig = function(config){
+    const c=config||{};
+    const courses=new Set(c.courses||[]);
+    [...document.getElementById('teacher-course-select').options].forEach(o=>o.selected=courses.has(o.value));
+    const subjects=new Set(c.subjects||[]);
+    [...grid.querySelectorAll('input')].forEach(i=>i.checked=subjects.has(i.value));
+  };
+
+  document.getElementById('teacher-subject-save').addEventListener('click',()=>{
+    const config=window.AULA_getTeacherConfig();
+    if(!config.courses.length){alert('Selecciona al menos un curso.');return;}
+    if(!config.subjects.length){alert('Selecciona al menos una materia.');return;}
+    localStorage.setItem('aula_teacher_subject_config',JSON.stringify(config));
+    root.hidden=true;
+    document.dispatchEvent(new CustomEvent('aula:teacher-config-updated',{detail:config}));
+  });
+
+  const saved=localStorage.getItem('aula_teacher_subject_config');
+  if(saved){
+    try { window.AULA_setTeacherConfig(JSON.parse(saved)); } catch(e){}
+  }
+})();
+</script>
+
+
+<!-- AULA: feedback pedagógico de Niko por pregunta -->
+<section id="niko-feedback" class="niko-feedback" hidden aria-live="polite">
+  <div class="niko-feedback-card">
+    <div class="niko-feedback-avatar" aria-hidden="true">🤖</div>
+    <div class="niko-feedback-body">
+      <div class="niko-feedback-title" id="niko-feedback-title">🫤 ¡Casi!</div>
+      <p id="niko-feedback-message"></p>
+      <div class="niko-feedback-box">
+        <strong>💡 Pista</strong>
+        <p id="niko-feedback-hint"></p>
+      </div>
+      <div class="niko-feedback-box">
+        <strong>🧠 ¿Qué pasó?</strong>
+        <p id="niko-feedback-explanation"></p>
+      </div>
+      <div class="niko-feedback-actions">
+        <button type="button" id="niko-retry-question" class="niko-primary">Intentarlo otra vez</button>
+        <button type="button" id="niko-continue-question" class="niko-secondary">Continuar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.niko-feedback{position:fixed;inset:auto 16px 86px 16px;z-index:9999;display:flex;justify-content:center;pointer-events:none}
+.niko-feedback[hidden]{display:none}
+.niko-feedback-card{pointer-events:auto;width:min(620px,100%);display:flex;gap:14px;background:#fff;border-radius:22px;padding:18px;box-shadow:0 14px 42px rgba(0,0,0,.18);border:1px solid rgba(0,0,0,.08)}
+.niko-feedback-avatar{width:58px;height:58px;flex:0 0 58px;border-radius:50%;display:grid;place-items:center;background:#eef7f0;font-size:30px}
+.niko-feedback-title{font-size:1.2rem;font-weight:800;margin-bottom:5px}
+.niko-feedback-body p{margin:6px 0;line-height:1.45}
+.niko-feedback-box{margin-top:10px;padding:10px 12px;border-radius:14px;background:#f7f8f7}
+.niko-feedback-box p{margin-bottom:0}
+.niko-feedback-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.niko-feedback-actions button{border:0;border-radius:12px;padding:11px 15px;font-weight:700;cursor:pointer}
+.niko-primary{background:#4b8f62;color:#fff}.niko-secondary{background:#ecefec}
+@media(max-width:600px){.niko-feedback{inset:auto 10px 78px 10px}.niko-feedback-card{padding:14px}.niko-feedback-avatar{width:48px;height:48px;flex-basis:48px;font-size:25px}}
+@media(prefers-reduced-motion:no-preference){.niko-feedback-card{animation:nikoPop .22s ease-out}@keyframes nikoPop{from{transform:translateY(12px);opacity:.2}to{transform:none;opacity:1}}}
+</style>
+
+<script>
+(function(){
+  const panel=document.getElementById('niko-feedback');
+  if(!panel) return;
+
+  const title=document.getElementById('niko-feedback-title');
+  const msg=document.getElementById('niko-feedback-message');
+  const hint=document.getElementById('niko-feedback-hint');
+  const explanation=document.getElementById('niko-feedback-explanation');
+  const retry=document.getElementById('niko-retry-question');
+  const cont=document.getElementById('niko-continue-question');
+
+  let currentQuestion=null, retryFn=null, continueFn=null;
+
+  function fallback(q){
+    return {
+      title:'🫤 ¡Casi!',
+      message:'No pasa nada. Vamos a revisar este paso juntos.',
+      hint:q?.hint || 'Piensa en qué paso de la explicación se relaciona con esta pregunta.',
+      explanation:q?.explanation || 'Tu respuesta no coincide con la respuesta esperada. Revisa la idea principal del tema e inténtalo de nuevo.',
+      state:'confundido'
+    };
+  }
+
+  // API pública para el motor de preguntas:
+  // window.AULA_showNikoFeedback(question, {retry, continue})
+  window.AULA_showNikoFeedback=function(question, callbacks){
+    currentQuestion=question||{};
+    callbacks=callbacks||{};
+    const fb=Object.assign(fallback(currentQuestion),{
+      title:currentQuestion.feedback_title,
+      message:currentQuestion.feedback_message,
+      hint:currentQuestion.hint,
+      explanation:currentQuestion.explanation
+    });
+
+    title.textContent=fb.title || '🫤 ¡Casi!';
+    msg.textContent=fb.message || 'No pasa nada. Vamos a revisarlo juntos.';
+    hint.textContent=fb.hint || fallback(currentQuestion).hint;
+    explanation.textContent=fb.explanation || fallback(currentQuestion).explanation;
+    retryFn=callbacks.retry;
+    continueFn=callbacks.continue;
+    panel.hidden=false;
+
+    document.dispatchEvent(new CustomEvent('aula:niko-feedback',{
+      detail:{question:currentQuestion, feedback:fb}
+    }));
+  };
+
+  window.AULA_hideNikoFeedback=function(){ panel.hidden=true; };
+
+  retry.addEventListener('click',function(){
+    panel.hidden=true;
+    if(typeof retryFn==='function') retryFn(currentQuestion);
+  });
+  cont.addEventListener('click',function(){
+    panel.hidden=true;
+    if(typeof continueFn==='function') continueFn(currentQuestion);
+  });
+
+  // Registro de errores para el perfil/progreso offline.
+  window.AULA_registerQuestionError=function(question, answer){
+    const key='aula_question_errors';
+    let data={};
+    try{data=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
+    const id=question?.id || [question?.grado,question?.materia,question?.tema_id].join('_');
+    if(!data[id]) data[id]={count:0,topic_id:question?.tema_id||null,subject:question?.materia||null,grade:question?.grado||null};
+    data[id].count++;
+    data[id].last_answer=answer;
+    data[id].updated_at=new Date().toISOString();
+    localStorage.setItem(key,JSON.stringify(data));
+    return data[id];
+  };
+})();
+</script>
+
+
+<!-- AULA: sincronización offline -> docente y resumen de evolución -->
+<section id="teacher-sync-summary" class="teacher-sync-summary" hidden aria-live="polite">
+  <div class="teacher-sync-card">
+    <div class="teacher-sync-icon">📈</div>
+    <div>
+      <strong id="teacher-sync-title">Progreso sincronizado</strong>
+      <p id="teacher-sync-text"></p>
+      <div id="teacher-sync-status" class="teacher-sync-status"></div>
+    </div>
+  </div>
+</section>
+
+<style>
+.teacher-sync-summary{max-width:900px;margin:12px auto;padding:0 16px}
+.teacher-sync-summary[hidden]{display:none}
+.teacher-sync-card{display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:18px;padding:15px 17px;box-shadow:0 8px 25px rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.07)}
+.teacher-sync-icon{font-size:28px}.teacher-sync-card p{margin:4px 0 7px;line-height:1.4}.teacher-sync-status{font-size:.85rem;font-weight:700}
+.teacher-sync-status.ok{color:#39734c}.teacher-sync-status.warn{color:#9a6a18}.teacher-sync-status.help{color:#a13d3d}
+</style>
+
+<script>
+(function(){
+  const QUEUE_KEY='aula_offline_progress_queue';
+  const SYNC_KEY='aula_last_sync';
+  const stateKey='aula_student_progress';
+  const summary=document.getElementById('teacher-sync-summary');
+
+  function read(k, fallback){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(fallback));}catch(e){return fallback;}}
+  function write(k,v){localStorage.setItem(k,JSON.stringify(v));}
+
+  // Guarda cada actividad realizada sin depender de internet.
+  window.AULA_queueProgress=function(event){
+    const q=read(QUEUE_KEY,[]);
+    q.push(Object.assign({
+      id:'evt_'+Date.now()+'_'+Math.random().toString(36).slice(2),
+      created_at:new Date().toISOString()
+    },event||{}));
+    write(QUEUE_KEY,q);
+    return q.length;
+  };
+
+  // Resume el desempeño del estudiante a partir de sus actividades locales.
+  window.AULA_buildProgressSummary=function(events){
+    events=events||read(QUEUE_KEY,[]);
+    const total=events.length;
+    const correct=events.filter(e=>e.correct===true).length;
+    const completed=new Set(events.filter(e=>e.completed).map(e=>e.tema_id||e.topic_id).filter(Boolean));
+    const attempted=new Set(events.map(e=>e.tema_id||e.topic_id).filter(Boolean));
+    const accuracy=total?Math.round(correct/total*100):0;
+    let status='sin_datos', label='Aún no hay suficiente actividad';
+    if(total>=1){
+      if(accuracy>=80 && completed.size>0){status='bien';label='Va bien';}
+      else if(accuracy<60 || events.some(e=>e.needs_help)){status='ayuda';label='Necesita ayuda';}
+      else {status='avance';label='Va avanzando';}
+    }
+    return {
+      total_actividades:total,
+      respuestas_correctas:correct,
+      precision:accuracy,
+      temas_trabajados:attempted.size,
+      temas_completados:completed.size,
+      estado:status,
+      etiqueta:label
+    };
+  };
+
+  // Hook para registrar una actividad del estudiante.
+  window.AULA_recordOfflineActivity=function(activity){
+    const event=Object.assign({
+      grade:window.AULA_STUDENT_GRADE || null,
+      subject:window.AULA_CURRENT_SUBJECT || null,
+      tema_id:window.AULA_CURRENT_TOPIC_ID || null
+    },activity||{});
+    return window.AULA_queueProgress(event);
+  };
+
+  function renderSyncResult(summaryData){
+    if(!summary) return;
+    summary.hidden=false;
+    const text=document.getElementById('teacher-sync-text');
+    const status=document.getElementById('teacher-sync-status');
+    text.textContent=`${summaryData.temas_trabajados} temas trabajados · ${summaryData.precision}% de precisión · ${summaryData.temas_completados} temas completados.`;
+    status.className='teacher-sync-status '+(summaryData.estado==='bien'?'ok':summaryData.estado==='ayuda'?'help':'warn');
+    status.textContent=summaryData.etiqueta;
+  }
+
+  // Adaptador de sincronización: en producción, reemplazar sendToAulaServer
+  // por POST autenticado al backend. Nunca se borra la cola si el envío falla.
+  async function sendToAulaServer(events){
+    if(!navigator.onLine) throw new Error('offline');
+    const endpoint=window.AULA_SYNC_ENDPOINT;
+    if(!endpoint) return {mode:'local_demo',accepted:events.length};
+    const response=await fetch(endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body:JSON.stringify({
+        type:'student_progress_sync',
+        events:events
+      })
+    });
+    if(!response.ok) throw new Error('sync_failed');
+    return response.json().catch(()=>({accepted:events.length}));
+  }
+
+  window.AULA_syncProgressWhenOnline=async function(){
+    const q=read(QUEUE_KEY,[]);
+    if(!q.length || !navigator.onLine) return {synced:0,remaining:q.length};
+    try{
+      const result=await sendToAulaServer(q);
+      // Solo se limpia la cola cuando el servidor confirma.
+      write(QUEUE_KEY,[]);
+      write(SYNC_KEY,{at:new Date().toISOString(),synced:q.length,result:result});
+      const s=window.AULA_buildProgressSummary(q);
+      renderSyncResult(s);
+      document.dispatchEvent(new CustomEvent('aula:progress-synced',{detail:{summary:s,result:result}}));
+      return {synced:q.length,remaining:0,summary:s};
+    }catch(err){
+      return {synced:0,remaining:q.length,error:String(err)};
+    }
+  };
+
+  // Cuando vuelve internet, intenta sincronizar automáticamente.
+  window.addEventListener('online',()=>window.AULA_syncProgressWhenOnline());
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') window.AULA_syncProgressWhenOnline();});
+  window.AULA_syncProgressWhenOnline();
+
+  // API para el dashboard docente: filtra por estudiante y por las materias/cursos del docente.
+  window.AULA_getTeacherStudentSummary=function(studentId,teacherConfig){
+    const events=read(QUEUE_KEY,[]).filter(e=>!studentId || e.student_id===studentId);
+    let filtered=events;
+    if(teacherConfig?.courses?.length) filtered=filtered.filter(e=>!e.grade || teacherConfig.courses.includes(String(e.grade)));
+    if(teacherConfig?.subjects?.length) filtered=filtered.filter(e=>!e.subject || teacherConfig.subjects.includes(e.subject));
+    return window.AULA_buildProgressSummary(filtered);
+  };
+})();
+</script>
+
+
+<!-- AULA: celebración de racha al completar la primera lección del día -->
+<div id="streak-celebration" class="streak-celebration" hidden role="dialog" aria-live="polite" aria-label="Racha completada">
+  <div class="streak-celebration-card">
+    <div class="streak-niko">🔥🤖</div>
+    <div class="streak-celebration-title">¡Felicidades!</div>
+    <p id="streak-celebration-text">Completaste tu primera lección del día.</p>
+    <div class="streak-number"><span id="streak-number-value">1</span> 🔥</div>
+    <p class="streak-small">Cada día cumplido suma 1 al fuego. ¡Sigue así para conseguir logros y monedas!</p>
+    <button id="streak-celebration-close" class="btn btn-primary">¡Seguir aprendiendo!</button>
+  </div>
+</div>
+<style>
+.streak-celebration{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px;background:rgba(0,0,0,.35)}
+.streak-celebration[hidden]{display:none}
+.streak-celebration-card{width:min(420px,100%);text-align:center;background:#fff;border-radius:26px;padding:28px 22px;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+.streak-niko{font-size:54px;margin-bottom:8px}
+.streak-celebration-title{font-size:1.65rem;font-weight:900}
+.streak-number{font-size:2.8rem;font-weight:900;margin:12px 0}
+.streak-small{opacity:.7;margin:0 0 18px}
+.streak-celebration-card button{min-height:44px;width:100%}
+@media(prefers-reduced-motion:no-preference){.streak-celebration-card{animation:streakPop .28s ease-out}@keyframes streakPop{from{transform:scale(.92);opacity:.3}to{transform:scale(1);opacity:1}}}
+</style>
+<script>
+(function(){
+  const modal=document.getElementById("streak-celebration");
+  if(!modal) return;
+  const num=document.getElementById("streak-number-value");
+  const text=document.getElementById("streak-celebration-text");
+  const close=document.getElementById("streak-celebration-close");
+  const shownKey="aula_streak_celebrated_day";
+  function today(){
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+  document.addEventListener("aula:streak-increased",function(e){
+    const s=e.detail||{};
+    const day=today();
+    if(localStorage.getItem(shownKey)===day) return;
+    localStorage.setItem(shownKey,day);
+    num.textContent=String(s.count||1);
+    text.textContent="¡Cumpliste tu meta diaria! Completaste al menos una lección corta antes de la medianoche.";
+    modal.hidden=false;
+  });
+  close.addEventListener("click",()=>{modal.hidden=true;});
+})();
+</script>
+
+<script>
+(function(){function u(){const s=window.AULA_STREAK?.get?.()||{count:0};document.querySelectorAll('[data-streak-value],#streak-value,#streak-number,.streak-number-value').forEach(e=>e.textContent=String(s.count));}document.addEventListener('DOMContentLoaded',u);document.addEventListener('aula:streak-increased',u);})();
+</script>
+<script>
+(function(){
+  window.AULA_initializeStudentStreak=function(student){
+    const id=student?.id || student?.email || student?.correo;
+    if(!id || !window.AULA_STREAK) return;
+    localStorage.setItem("aula_current_student_id",String(id));
+    window.AULA_STREAK.initializeForNewStudent(id);
+  };
+})();
+</script>
+
+<div id="daily-goal-card" class="daily-goal-card" aria-label="Meta diaria">
+  <div class="daily-goal-fire">🔥</div>
+  <div>
+    <strong>Meta diaria</strong>
+    <p>Completa al menos una lección corta antes de la medianoche de tu hora local.</p>
+    <small>El fuego aumenta 1 por cada día cumplido. Mantenerlo otorga logros y monedas.</small>
+  </div>
+</div>
+<style>
+.daily-goal-card{display:flex;gap:12px;align-items:center;margin:12px auto;padding:14px 16px;max-width:620px;border-radius:18px;background:#fff;box-shadow:0 7px 24px rgba(0,0,0,.07)}
+.daily-goal-fire{font-size:32px}.daily-goal-card p{margin:3px 0 5px;line-height:1.35}.daily-goal-card small{opacity:.7;line-height:1.35;display:block}
+</style>
+
+</body>
+</html>

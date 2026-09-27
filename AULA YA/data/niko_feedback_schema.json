@@ -1,0 +1,20 @@
+{
+  "feedback_fields": {
+    "feedback_title": "Texto corto de Niko",
+    "feedback_message": "Mensaje de acompañamiento",
+    "hint": "Pista específica del tema/pregunta",
+    "explanation": "Explicación pedagógica del error"
+  },
+  "required_question_linkage": [
+    "id",
+    "grado",
+    "materia",
+    "tema_id"
+  ],
+  "states": [
+    "confundido",
+    "motivar",
+    "pensar"
+  ],
+  "offline_error_tracking": true
+}
