@@ -1,10 +1,8 @@
 /* =========================================================
-   AULA — Sistema de diseño
+   AulaYa — Sistema de diseño
    Paleta e identidad tomadas del mockup: verde principal,
    tarjetas redondeadas, mascota Niko, gamificación.
    ========================================================= */
-
-@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap");
 
 :root {
   --green-900: #12341f;
@@ -44,8 +42,8 @@
   --shadow-card: 0 2px 14px rgba(20, 60, 35, 0.08);
   --shadow-pop: 0 10px 30px rgba(20, 60, 35, 0.18);
 
-  --font-head: "Baloo 2", "Nunito", system-ui, sans-serif;
-  --font-body: "Nunito", system-ui, sans-serif;
+  --font-head: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Segoe UI", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -168,7 +166,9 @@ p { margin: 0; }
   color: var(--green-800);
   letter-spacing: .5px;
 }
-.aula-ya-logo { height: 42px; width: auto; max-width: 190px; object-fit: contain; object-position: left center; vertical-align: middle; border-radius: 4px; }
+.aulaya-wordmark { display:inline-flex; align-items:center; gap:7px; color:var(--green-800); font-family:var(--font-head); font-weight:800; letter-spacing:-.04em; white-space:nowrap; }
+.aulaya-wordmark img { width:34px; height:38px; object-fit:contain; vertical-align:middle; }
+.aulaya-wordmark strong { font-size:23px; }
 
 .header-pill {
   display: flex;
@@ -1056,7 +1056,8 @@ p { margin: 0; }
 /* -------------------- bienvenida: registro / inicio de sesión -------------------- */
 .bienvenida-screen { display:flex; flex-direction:column; align-items:center; padding-top:28px; }
 .bienvenida-screen .bv-brand { display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px; width:100%; }
-.bienvenida-screen .bv-brand .aula-ya-logo { height:58px; max-width:250px; }
+.bienvenida-screen .bv-brand .aulaya-wordmark img { width:43px; height:48px; }
+.bienvenida-screen .bv-brand .aulaya-wordmark strong { font-size:31px; }
 .bienvenida-screen h1 { font-size:18px; margin: 10px 0 18px; color: var(--green-800); }
 .bienvenida-screen .niko-sprite { width:96px; height:auto; }
 .bienvenida-screen .form-card { width:100%; }
@@ -1169,7 +1170,7 @@ p { margin: 0; }
 
 
 /* =========================================================
-   AULA — VISTA ESTUDIANTE RESPONSIVE REAL
+   AulaYa — VISTA ESTUDIANTE RESPONSIVE REAL
    La interfaz NO simula un teléfono en escritorio.
    Es una aplicación fluida que ocupa el viewport y se adapta
    desde móviles pequeños hasta tablets y pantallas grandes.
@@ -1402,7 +1403,7 @@ button, .resource-item, .subject-tile {
 }
 
 
-/* AULA — contenido del estudiante: solo su curso y sus materias */
+/* AulaYa — contenido del estudiante: solo su curso y sus materias */
 .student-grade-lock{margin:12px 0 18px;padding:12px 14px;border-radius:14px;background:var(--green-50,#eef8f1);color:var(--green-700,#256b3c);font-size:.92rem}
 
 /* Flujo estudiante: sin malla global hasta que exista una clase vinculada */
@@ -1425,7 +1426,7 @@ button, .resource-item, .subject-tile {
   .fb-actions .btn{width:100%}
 }
 
-/* AULA — Niko suave: las poses siguen cambiando, pero no hay parpadeos,
+/* AulaYa — Niko suave: las poses siguen cambiando, pero no hay parpadeos,
    rebotes, sacudidas, giros ni movimientos repetitivos que puedan resultar
    estridentes. La interacción se comunica con ilustración + texto. */
 .niko-sprite,
@@ -1471,7 +1472,7 @@ button, .resource-item, .subject-tile {
 
 .lesson-content-placeholder{padding:36px 28px;text-align:center;background:linear-gradient(180deg,#eef9f1,#fff);min-height:260px;display:flex;flex-direction:column;justify-content:center;align-items:center}.lesson-content-placeholder h3{font-size:28px;margin:8px 0}.lesson-content-placeholder p{max-width:560px;line-height:1.55;color:var(--ink-600,#53646a)}.lesson-kicker{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--green-700,#17824f)}.lesson-offline-badge{margin-top:12px;padding:9px 14px;border-radius:999px;background:#dcf3e3;color:#167849;font-weight:700}.empty-state-teacher{padding:24px}
 
-/* AULA — acceso a clases y práctica desde la clase */
+/* AulaYa — acceso a clases y práctica desde la clase */
 .student-class-card{width:100%;border:0;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;position:relative;}
 .student-class-card .chev{margin-left:auto;color:var(--ink-300,#a7b1ab);font-size:24px;line-height:1;}
 .student-class-card:hover{transform:translateY(-1px);}
@@ -1522,7 +1523,7 @@ button, .resource-item, .subject-tile {
 
 
 /* =========================================================
-   AULA — Avatar personalizable, sesiones y ranking por salón
+   AulaYa — Avatar personalizable, sesiones y ranking por salón
    ========================================================= */
 /* Avatar personalizable estilo cartoon: cara, cabello, ojos, nariz, boca, ropa y accesorios. */
 .custom-avatar{position:relative;width:var(--avatar-size);height:var(--avatar-size);border-radius:24%;background:var(--avatar-bg);overflow:hidden;flex:0 0 auto;box-shadow:inset 0 -5px 0 rgba(0,0,0,.04)}
@@ -1598,7 +1599,7 @@ button, .resource-item, .subject-tile {
 .sessions-limit{margin-top:10px;padding:9px 10px;border-radius:12px;background:#fff8e8;color:#806000;font-size:10.5px;line-height:1.35}
 
 /* ================================================================
-   AULA YA — Microvideos IA estilo Reels / TikTok
+   AulaYa — Microvideos IA estilo Reels / TikTok
    ================================================================ */
 .reel-screen{max-width:720px;margin:0 auto;padding-bottom:28px}
 .reel-wrap{position:relative;overflow:hidden;width:min(100%,420px);margin:8px auto 14px;aspect-ratio:9/16;border-radius:28px;background:linear-gradient(160deg,#062f24,#0b7d57 52%,#dff8eb);box-shadow:0 18px 44px rgba(16,55,42,.22);color:#fff;touch-action:pan-y;isolation:isolate}
@@ -1745,7 +1746,7 @@ input:focus-visible, select:focus-visible {
   padding:18px 18px 34px;
 }
 .bienvenida-screen .bv-brand { margin-bottom:4px; }
-.bienvenida-screen .bv-brand .aula-ya-logo { height:52px; }
+.bienvenida-screen .bv-brand .aulaya-wordmark img { width:39px; height:43px; }
 .bienvenida-screen .niko-sprite { width:88px; }
 .bienvenida-screen h1 {
   max-width:340px;

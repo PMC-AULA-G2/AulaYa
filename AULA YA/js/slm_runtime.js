@@ -1,4 +1,4 @@
-/* AULA YA — SLM local runtime
+/* AulaYa — SLM local runtime
  * Real local inference in the browser through Transformers.js + ONNX.
  * Primary: Qwen2.5-0.5B-Instruct Q4 (Spanish/multilingual friendly).
  * Fallback: SmolLM2-135M-Instruct Q4 for constrained devices.
@@ -11,7 +11,7 @@ const AULA_SLM_CONFIG = {
   fallback: 'onnx-community/SmolLM2-135M-Instruct-ONNX',
   primaryApproxMB: 786,
   fallbackApproxMB: 181,
-  maxNewTokens: 100,
+  maxNewTokens: 64,
   defaultModel: 'onnx-community/SmolLM2-135M-Instruct-ONNX',
   installedModelKey: 'aula_slm_installed_model_v1',
   selectedModelKey: 'aula_slm_selected_model_v1'
@@ -154,7 +154,7 @@ function buildContext(meta={}) {
 }
 
 function systemPrompt(meta) {
-  return `Eres Niko, tutor de AULA YA. Responde en español claro y breve, adecuado para estudiantes de ${meta.grade || 'primaria y secundaria'}.
+  return `Eres Niko, tutor de AulaYa. Responde en español claro y breve, adecuado para estudiantes de ${meta.grade || 'primaria y secundaria'}.
 Limítate al tema indicado y usa SOLO los datos de las fuentes aprobadas. No inventes operaciones ni resultados. Si piden un ejemplo, explica uno correctamente paso a paso. Si la fuente no alcanza, dilo.
 Materia: ${meta.subject || 'no indicada'}. Tema: ${meta.topic || 'no indicado'}.
 Fuente curricular aprobada: ${meta.evidence || 'Sin preguntas aprobadas disponibles.'}
@@ -293,10 +293,8 @@ async function generate(question, meta={}) {
   try {
     const out = await pipe(messages, {
       max_new_tokens: AULA_SLM_CONFIG.maxNewTokens,
-      temperature: 0.35,
-      top_p: 0.85,
       repetition_penalty: 1.08,
-      do_sample: true
+      do_sample: false
     });
     const generated = out?.[0]?.generated_text;
     let text = '';

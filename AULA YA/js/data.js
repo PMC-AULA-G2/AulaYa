@@ -1,4 +1,4 @@
-// AULA — datos de ejemplo (mock) + estado persistente en localStorage.
+// AulaYa — datos de ejemplo (mock) + estado persistente en localStorage.
 // Todo lo que el estudiante gana/equipa se guarda en el dispositivo,
 // igual que describe la pantalla "Funcionamiento offline y online".
 
@@ -12,7 +12,7 @@ const NIKO_WARDROBE_ITEMS = {
     { id: "niko-musica", nombre: "¡A bailar!", categoria: "gestos", precio: 70, visualRef: "icons/niko/escucha-musica.png", pose: "escuchaMusica", estado: "bloqueado", icono: "🎵" },
   ],
   ropa: [
-    { id: "niko-uniforme", nombre: "Uniforme AULA", categoria: "ropa", precio: 0, visualRef: "👕", estado: "desbloqueado", icono: "👕" },
+    { id: "niko-uniforme", nombre: "Uniforme AulaYa", categoria: "ropa", precio: 0, visualRef: "👕", estado: "desbloqueado", icono: "👕" },
     { id: "niko-camiseta-azul", nombre: "Camiseta exploradora", categoria: "ropa", precio: 80, visualRef: "🧥", estado: "bloqueado", icono: "🧥" },
     { id: "niko-sudadera-lila", nombre: "Sudadera espacial", categoria: "ropa", precio: 120, visualRef: "🧥", estado: "bloqueado", icono: "🪐" },
     { id: "niko-camiseta-estrella", nombre: "Camiseta estrella", categoria: "ropa", precio: 100, visualRef: "👕", estado: "bloqueado", icono: "⭐" },
@@ -364,7 +364,7 @@ const AVATAR_SHOP = {
     { id:"outfit-3", label:"Sudadera", icon:"S", price:100 },
     { id:"outfit-4", label:"Camiseta naranja", icon:"N", price:100 },
     { id:"outfit-5", label:"Chaqueta", icon:"J", price:140 },
-    { id:"outfit-6", label:"Uniforme AULA", icon:"U", price:180 },
+    { id:"outfit-6", label:"Uniforme AulaYa", icon:"U", price:180 },
   ],
   accesorio: [
     { id:"accessory-none", label:"Sin accesorio", icon:"—", price:0 },
@@ -374,7 +374,7 @@ const AVATAR_SHOP = {
     { id:"accessory-bow", label:"Moño", icon:"M", price:130 },
   ],
   fondo: [
-    { id:"bg-1", label:"AULA", icon:"A", price:0 },
+    { id:"bg-1", label:"AulaYa", icon:"A", price:0 },
     { id:"bg-2", label:"Cielo", icon:"C", price:90 },
     { id:"bg-3", label:"Atardecer", icon:"T", price:120 },
     { id:"bg-4", label:"Bosque", icon:"B", price:140 },
@@ -416,6 +416,7 @@ const TEACHER_STUDENTS = [
 // departamento y relación con la sede principal cuando existe.
 let RURAL_SCHOOLS = [];
 let RURAL_SCHOOLS_READY = false;
+let RURAL_SCHOOLS_ERROR = false;
 
 function schoolLabel(s) {
   return `${s.nombre} — ${s.municipio}, ${s.departamento}`;
@@ -638,16 +639,16 @@ function registerDailyActivity() {
 // cada respuesta trae un "mood" — así Niko reacciona con la pose correcta
 // (estado/interacción/expresión) según lo que el estudiante le pregunta.
 const NIKO_QUICK_REPLIES = {
-  "¿Qué es una fracción equivalente?": {
-    text: "Dos fracciones son equivalentes cuando representan la misma cantidad. Ejemplos: 1/2 = 2/4 = 3/6 y 2/3 = 4/6. Para comprobarlo, multiplica cruzado o multiplica/divide numerador y denominador por el mismo número.",
-    mood: "explica",
-  },
-  "Dame un ejemplo": {
-    text: "¡Claro! Mira varios: 1/2 = 2/4, 2/3 = 4/6, 3/5 = 6/10 y 4/7 = 8/14. En todos multiplicamos arriba y abajo por el mismo número.",
+  "¿Me ayudas a entender un tema?": {
+    text: "¡Claro! Dime qué tema estás viendo y, si puedes, tu grado o materia. Lo revisamos paso a paso con palabras sencillas.",
     mood: "motiva",
   },
-  "No entendí esta parte": {
-    text: "No pasa nada. Dime el nombre del tema que estás viendo —por ejemplo, fracciones, potencias, radicales, ecuaciones, porcentajes o geometría— y te lo explico paso a paso con varios ejemplos.",
+  "¿Cómo puedo resolver una duda paso a paso?": {
+    text: "Cuéntame tu pregunta o comparte el ejercicio. Primero identificamos qué sabemos, luego qué necesitamos encontrar y después avanzamos un paso a la vez.",
+    mood: "explica",
+  },
+  "¿Qué puedo repasar hoy?": {
+    text: "Podemos repasar cualquier materia. Dime cuál estás estudiando o qué actividad tienes pendiente y te ayudo a elegir por dónde empezar.",
     mood: "duda",
   },
 };
@@ -865,7 +866,7 @@ function nikoReply(text, activeTopic = null) {
   if (curriculumHelp) return { text: curriculumHelp, mood: "explica" };
 
   return {
-    text: "Quiero ayudarte a aprender, no darte una respuesta de cualquier tema. Escríbeme el nombre del tema que estás estudiando, por ejemplo: “explícame potencias”, “no entiendo radicales” o “dame ejemplos de fracciones”, y te lo explico paso a paso con varios ejemplos.",
+    text: "Quiero ayudarte a aprender. Cuéntame qué tema estás estudiando o comparte tu pregunta; podemos revisarla paso a paso y con ejemplos que se ajusten a tu clase.",
     mood: "duda",
   };
 }

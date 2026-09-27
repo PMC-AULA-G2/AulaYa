@@ -1,6 +1,6 @@
-# AULA — Prototipo funcional (PWA)
+# AulaYa — Prototipo funcional (PWA)
 
-Prototipo navegable de **AULA**, la plataforma educativa offline-first con
+Prototipo navegable de **AulaYa**, la plataforma educativa offline-first con
 tutor IA (Niko), camino de aprendizaje, gamificación y panel docente,
 implementado a partir del mockup de diseño del proyecto PMC.
 
@@ -18,7 +18,7 @@ funcionando sin conexión.
 3. Android: menú ⋮ → **"Instalar aplicación"** / **"Agregar a pantalla
    de inicio"**. iPhone: botón compartir → **"Agregar a pantalla de
    inicio"**.
-4. Queda un ícono de AULA en el celular que abre a pantalla completa y
+4. Queda un ícono de AulaYa en el celular que abre a pantalla completa y
    funciona sin internet (gracias al `service-worker.js`).
 
 ## Cómo probarla ahora mismo (sin subir nada)
@@ -52,7 +52,7 @@ recargar la página.
 index.html            SPA con router por hash (#/inicio, #/docente/clases…)
 manifest.json          metadatos de instalación (nombre, ícono, colores)
 service-worker.js      cachea el shell para que funcione sin conexión
-css/style.css          sistema de diseño (paleta verde AULA, componentes)
+css/style.css          sistema de diseño (paleta verde AulaYa, componentes)
 js/data.js             datos de ejemplo + estado persistente (localStorage),
                         colegios rurales, clases/estudiantes, cuentas
 js/malla.js            malla académica de referencia 1.°-11.° (Colombia)
@@ -115,17 +115,13 @@ acceso a nada por la migración.
 
 ## Colegios de zonas rurales de Colombia
 
-El selector de colegio (en el registro y al crear una clase) usa una
-lista de **~30 colegios de ejemplo**, repartidos entre distintos
-departamentos (Córdoba, Caquetá, Tolima, Nariño, Cauca, La Guajira,
-Chocó, etc.) — ver `RURAL_SCHOOLS` en `js/data.js`.
-
-**Aviso importante:** no es el registro oficial completo del Ministerio
-de Educación (hay más de 90.000 sedes educativas en Colombia); armar y
-verificar esa lista completa está fuera del alcance de este prototipo.
-Es una muestra representativa para poder probar el flujo — cualquier
-colegio real se puede escribir a mano si se agrega un campo "Otro" más
-adelante.
+El selector de registro consulta un catálogo de **37.310 sedes rurales**
+de Educación Formal DANE 2024 desde `data/colegios_rurales_2024.json`.
+Como pesa unos 10,8 MB, AulaYa lo descarga solo al abrir el formulario de
+registro, no al iniciar cada sesión. Después de consultarlo con conexión,
+el service worker intenta conservarlo en caché para siguientes usos sin
+conexión. Si el navegador elimina esa caché, vuelve a necesitar conexión
+para descargar la lista.
 
 ## Base de datos compartida (opcional)
 
@@ -254,7 +250,7 @@ Dónde se usa hoy:
   ancho variable, que se veía desordenada. Tocar **"Fracciones
   equivalentes"** (el único tema con video y ejercicios ya construidos)
   lleva a esa lección real; tocar cualquier otro tema muestra un aviso
-  honesto ("llega pronto a AULA") en vez de un enlace roto — a propósito
+  honesto ("llega pronto a AulaYa") en vez de un enlace roto — a propósito
   no se prometió contenido que no existe.
 - **Recomendaciones y contenido** (docente): el selector de tema ya no es
   una lista fija de 3 opciones — se arma agrupado por área
@@ -361,7 +357,7 @@ el resto de temas. Es honesto decir qué es y qué no es:
 - **Es un video real y reproducible**, vertical (9:16, estilo TikTok/Reels),
   de 24 segundos, con la explicación animada (pizza en 4 vs. pizza en 8,
   barras comparativas, el "truco" de multiplicar arriba y abajo) y la
-  identidad visual de AULA.
+  identidad visual de AulaYa.
 - **Es mudo, con texto en pantalla en vez de narración.** Este entorno de
   desarrollo no tuvo en ningún momento acceso a una herramienta de
   texto-a-voz (sin conexión a internet para descargarla ni paquetes de voz
@@ -454,4 +450,4 @@ La vista de estudiante ocupa el viewport y se adapta de forma fluida a móviles,
 
 ## SLM local funcional
 
-La app incluye un tutor curricular offline que funciona sin instalar modelos. En el chat de Niko puedes descargar opcionalmente un SLM local: el modelo ligero ocupa aproximadamente 181 MB y el avanzado 786 MB. La descarga muestra el progreso, usa el caché persistente de Transformers.js y solicita al navegador conservar esos datos. Una vez descargado, AULA intenta cargarlo automáticamente, incluso sin conexión; el modo offline depende de que el navegador no haya eliminado sus archivos por falta de espacio. El runtime filtra salidas repetitivas, desancladas del contenido aprobado o con números no respaldados, y usa la explicación curricular segura si el SLM falla esa validación. Los modelos se sirven desde Hugging Face durante la primera descarga; las preguntas del estudiante no se envían a un servicio de inferencia remoto.
+La app incluye un tutor curricular offline que funciona sin instalar modelos. En el chat de Niko puedes descargar opcionalmente un SLM local: el modelo ligero ocupa aproximadamente 181 MB y el avanzado 786 MB. La descarga muestra el progreso, usa el caché persistente de Transformers.js y solicita al navegador conservar esos datos. Una vez descargado, AulaYa intenta cargarlo automáticamente, incluso sin conexión; el modo offline depende de que el navegador no haya eliminado sus archivos por falta de espacio. El runtime filtra salidas repetitivas, desancladas del contenido aprobado o con números no respaldados, y usa la explicación curricular segura si el SLM falla esa validación. Los modelos se sirven desde Hugging Face durante la primera descarga; las preguntas del estudiante no se envían a un servicio de inferencia remoto.

@@ -1,4 +1,4 @@
-// AULA — lógica de la app (router + pantallas + interacciones)
+// AulaYa — lógica de la app (router + pantallas + interacciones)
 "use strict";
 
 const viewRoot = document.getElementById("view-root");
@@ -76,6 +76,18 @@ function showToast(msg) {
   toastEl.classList.add("show");
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+
+async function fetchJsonWithTimeout(resource, options = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal });
+    const data = await response.json();
+    return { response, data };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function initials(name) {
@@ -158,21 +170,27 @@ let isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
 let lastSyncAt = null;
 let syncIntervalId = null;
 let syncBusy = false;
-let prefetchVideosBusy = false;
+let dbInitializing = null;
 
 async function initDb() {
+  if (DB) return;
+  if (dbInitializing) return dbInitializing;
+  dbInitializing = (async () => {
   try {
     if (!(window.claude && typeof window.claude.use === "function")) return;
     DB = await window.claude.use("db");
     if (!DB) return;
-    await syncAll();
-    // sigue sincronizando cada rato mientras haya internet, para que la
-    // última copia guardada esté lo más fresca posible justo antes de
-    // quedarse sin conexión (y así se pueda seguir usando sin internet).
-    if (!syncIntervalId) syncIntervalId = setInterval(() => { if (isOnline && !document.hidden) syncAll(); }, 3000);
+    // Sync is intentionally less frequent: local-first changes are saved
+    // immediately; shared data refreshes in the background.
+    if (!syncIntervalId) syncIntervalId = setInterval(() => { if (isOnline && !document.hidden) syncAll(); }, 60_000);
+    void syncAll();
   } catch (e) {
     DB = null; // sin capacidad db disponible: seguimos solo en localStorage
+  } finally {
+    dbInitializing = null;
   }
+  })();
+  return dbInitializing;
 }
 
 async function syncAll() {
@@ -182,9 +200,6 @@ async function syncAll() {
     await syncUsersFromDb();
     await syncClassesFromDb();
     lastSyncAt = Date.now();
-    // Background download of direct local/licensed topic videos. This is
-    // intentionally non-blocking: the app remains usable while media syncs.
-    setTimeout(() => prefetchStudentTopicVideos(), 0);
   } catch (e) {
     /* si falla, seguimos con lo que ya está guardado localmente */
   } finally {
@@ -257,14 +272,20 @@ window.addEventListener("online", () => {
   isOnline = true;
   updateConnStatusUI();
   if (!DB) initDb(); else syncAll();
+  if (!AULA_QUESTION_BANK_LOADED) void loadAulaQuestionBank();
+  if (parseHash().route === "bienvenida" && RURAL_SCHOOLS_ERROR) {
+    RURAL_SCHOOLS_READY = false;
+    RURAL_SCHOOLS_ERROR = false;
+    loadRuralSchoolCatalog().then(() => renderSchoolPickerOnly());
+  }
   navigator.serviceWorker?.ready?.then(reg => reg.active?.postMessage({type:"AULA_PREFETCH_CORE"})).catch(()=>{});
 });
 window.addEventListener("offline", () => {
   isOnline = false;
   updateConnStatusUI();
-  showToast("Sin conexión: puedes seguir usando AULA con tu última copia guardada.");
+  showToast("Sin conexión: puedes seguir usando AulaYa con tu última copia guardada.");
 });
-setInterval(updateConnStatusUI, 3000); // estado de conexión y sincronización visual cada 3 s
+setInterval(updateConnStatusUI, 15_000);
 
 // ---------------------------------------------------------------------
 // Router
@@ -306,6 +327,11 @@ function render() {
     teacherShell.style.display = "none";
     bottomNav.style.display = "none";
     viewRoot.innerHTML = renderBienvenida();
+    if (!RURAL_SCHOOLS_READY && !RURAL_SCHOOLS_ERROR) {
+      loadRuralSchoolCatalog().then(() => {
+        if (parseHash().route === "bienvenida") renderSchoolPickerOnly();
+      });
+    }
     viewRoot.scrollTop = 0;
     feedbackBar.className = "feedback-bar";
     feedbackBar.innerHTML = "";
@@ -542,7 +568,7 @@ function renderInicio() {
       <p>Tu cuenta ya está lista. Cuando un docente te agregue a una clase, aquí aparecerán tus materias, temas y actividades.</p>
       <div class="empty-step"><b>1.</b> Tu docente crea la clase.</div>
       <div class="empty-step"><b>2.</b> Te agrega con tu correo.</div>
-      <div class="empty-step"><b>3.</b> AULA carga solo lo que necesitas.</div>
+      <div class="empty-step"><b>3.</b> AulaYa carga solo lo que necesitas.</div>
     </div>`;
 
   return `
@@ -582,7 +608,7 @@ function renderInicio() {
 }
 
 function leafSvg() {
-  return `<img class="aula-ya-logo" src="icons/aula-ya-logo.png" alt="Aula Ya" />`;
+  return `<span class="aulaya-wordmark"><img src="icons/aula-leaf-oficial.png" alt="" /><strong>AulaYa</strong></span>`;
 }
 
 // ---------------------------------------------------------------------
@@ -612,11 +638,11 @@ function notifTargetVisible(n) {
 function renderNotificaciones() {
   syncStudentClassContent();
   const list = getNotifications().filter(notifTargetVisible);
-  const tabs = ["Todas", "Profesores", "AULA", "Oportunidades"];
+  const tabs = ["Todas", "Profesores", "AulaYa", "Oportunidades"];
   const filtered = list.filter((n) => {
     if (notifFilter === "Todas") return true;
     if (notifFilter === "Profesores") return n.type === "profesor";
-    if (notifFilter === "AULA") return n.type === "aula";
+    if (notifFilter === "AulaYa") return n.type === "aula";
     if (notifFilter === "Oportunidades") return /oportunidad|beca/i.test(n.body);
     return true;
   });
@@ -825,32 +851,6 @@ async function downloadVideo(tema, {silent=false} = {}) {
   if (!silent) render();
 }
 
-async function prefetchStudentTopicVideos() {
-  if (!isOnline || !("caches" in window) || !STATE.auth || STATE.auth.role !== "estudiante" || prefetchVideosBusy) return;
-  prefetchVideosBusy = true;
-  try {
-    const linked = studentLinkedClasses();
-    const seen = new Set();
-    for (const cls of linked) {
-      const recs = Array.isArray(cls.recomendaciones) ? cls.recomendaciones : [];
-      for (const rec of recs) {
-        const src = rec.videoSrc || rec.videoUrl || rec.video;
-        if (!src || seen.has(src) || String(src).startsWith("https://www.youtube.com/") || String(src).startsWith("https://youtu.be/")) continue;
-        seen.add(src);
-        const tema = buildLessonTopic(rec, cls);
-        if (isVideoDownloaded(tema.id)) continue;
-        // Only cache direct app-owned/licensed media URLs. YouTube pages are not
-        // direct media files and are intentionally not converted into local copies.
-        await downloadVideo(tema, {silent:true});
-      }
-    }
-  } catch (e) {
-    // Offline-first must never block the app if a background download fails.
-  } finally {
-    prefetchVideosBusy = false;
-  }
-}
-
 async function removeDownloadedVideo(tema) {
   if ("caches" in window && tema.videoSrc && !tema.videoSrc.startsWith("data:")) {
     try {
@@ -924,7 +924,7 @@ function renderVideo(temaId) {
   return `<div class="screen reel-screen"><div class="back-row"><button class="icon-btn" data-nav="tema/${tema.id}">←</button><h2>${safe(tema.title)}</h2></div>
     <div class="reel-wrap" id="aula-reel" data-scenes='${sceneJson}' data-scene="0">
       <div class="reel-progress" id="reel-progress"></div>
-      <div class="reel-top"><span>✦ AULA YA</span><span class="reel-ia">IA · OFFLINE</span></div>
+      <div class="reel-top"><span>✦ AulaYa</span><span class="reel-ia">IA · OFFLINE</span></div>
       <div class="reel-scene" id="reel-scene"></div>
       <div class="reel-side"><button id="reel-like" aria-label="Me gusta">♡</button><span>♡</span><button id="reel-next" aria-label="Siguiente">↑</button></div>
       <div class="reel-caption"><span class="reel-topic">${safe(mv.subject)} · ${safe(mv.grade)}°</span><h3>${safe(first.title)}</h3><p>${safe(String(first.body).replace(/<[^>]+>/g,''))}</p><small>Desliza o toca ↑ para continuar · ${safe(tema.title)}</small></div>
@@ -988,6 +988,8 @@ function renderNikoMiniChat() {
 
 let AULA_QUESTION_BANK = [];
 let AULA_QUESTION_BANK_READY = false;
+let AULA_QUESTION_BANK_LOADED = false;
+let questionBankRequest = null;
 
 function normalizeQuestionKey(s) {
   return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -999,18 +1001,25 @@ function normalizeGradeValue(s) {
 }
 
 async function loadAulaQuestionBank() {
-  try {
-    const r = await fetch("./data/aula_question_bank.json", { cache: "no-cache" });
-    if (!r.ok) throw new Error("question bank");
-    const data = await r.json();
-    AULA_QUESTION_BANK = Array.isArray(data.questions) ? data.questions : [];
-    // The imported bank is the authoritative post-video bank:
-    // 987 topics × exactly 3 questions, linked by grade + subject + exact topic.
-    AULA_QUESTION_BANK_READY = AULA_QUESTION_BANK.length === 2961;
-  } catch (e) {
-    AULA_QUESTION_BANK = [];
-    AULA_QUESTION_BANK_READY = false;
-  }
+  if (AULA_QUESTION_BANK_LOADED) return true;
+  if (questionBankRequest) return questionBankRequest;
+  questionBankRequest = (async () => {
+    try {
+      const { response: r, data } = await fetchJsonWithTimeout("./data/aula_question_bank.json", { cache: "no-cache" });
+      if (!r.ok) throw new Error("question bank");
+      AULA_QUESTION_BANK = Array.isArray(data.questions) ? data.questions : [];
+      AULA_QUESTION_BANK_READY = AULA_QUESTION_BANK.length === 2961;
+      AULA_QUESTION_BANK_LOADED = true;
+      return true;
+    } catch (e) {
+      AULA_QUESTION_BANK = [];
+      AULA_QUESTION_BANK_READY = false;
+      return false;
+    } finally {
+      questionBankRequest = null;
+    }
+  })();
+  return questionBankRequest;
 }
 
 function practicalMathQuestionsForTema(tema) {
@@ -1112,7 +1121,7 @@ function questionsForTema(temaId) {
     (!subjectKey || normalizeSubjectName(q.materia) === subjectKey) &&
     (!gradeKey || normalizeGradeValue(q.grado) === gradeKey)
   );
-  // The imported AULA YA bank has exactly 3 questions per topic.
+  // The imported AulaYa bank has exactly 3 questions per topic.
   // Do not fall back to generic questions when the topic is present in the bank:
   // the activity must stay strictly tied to grade + subject + topic.
   if (qs.length) return qs.slice(0, 3);
@@ -1141,7 +1150,7 @@ function formatQuizTime(ms) {
 
 function startQuiz(temaId) {
   const pool = questionsForTema(temaId);
-  // Contrato del banco AULA YA: cada tema aporta exactamente 3 preguntas.
+  // Contrato del banco AulaYa: cada tema aporta exactamente 3 preguntas.
   // Después del video se presentan las 3, sin mezclar otros temas.
   const questions = [...pool].slice(0, 3);
   quiz = {
@@ -1204,7 +1213,7 @@ function renderEjercicios(temaId) {
 
 function renderQuizUnavailable(temaId) {
   const tema = getLessonTopic(temaId) || TEMAS[temaId];
-  return `<div class="screen quiz-done">${nikoImg("explica", "niko-avatar")}<h2>Lección disponible</h2><p>AULA preparó ${tema?.title || "este tema"} para que puedas practicarlo. Intenta entrar de nuevo para cargar sus ejercicios.</p><button class="btn btn-primary" data-nav="tema/${temaId}">Volver al tema</button></div>`;
+  return `<div class="screen quiz-done">${nikoImg("explica", "niko-avatar")}<h2>Lección disponible</h2><p>AulaYa preparó ${tema?.title || "este tema"} para que puedas practicarlo. Intenta entrar de nuevo para cargar sus ejercicios.</p><button class="btn btn-primary" data-nav="tema/${temaId}">Volver al tema</button></div>`;
 }
 
 function renderQuizReviewIntro() {
@@ -1595,7 +1604,7 @@ function renderFuturo() {
 // ---------------------------------------------------------------------
 
 let nikoFullChatLog = [
-  { mine: false, mood: "saludo", text: "¡Hola! Soy Niko, tu tutor de AULA. ¿En qué tema quieres que te ayude hoy?" },
+  { mine: false, mood: "saludo", text: "¡Hola! Soy Niko, tu tutor de AulaYa. ¿Qué te gustaría aprender hoy?" },
 ];
 let nikoFullChatContext = null;
 
@@ -1697,6 +1706,8 @@ let authSelectedSchoolId = "";
 let authSelectedDepartment = "";
 let authSelectedMunicipality = "";
 let authSchoolSearch = "";
+let schoolCatalogRequest = null;
+let schoolSearchTimer = null;
 
 function normalizeSchoolText(value) {
   return String(value || "")
@@ -1767,8 +1778,11 @@ function schoolResultHtml(s) {
 }
 
 function schoolPickerHtml() {
+  if (RURAL_SCHOOLS_ERROR) {
+    return `<div class="school-picker"><div class="school-picker-loading" role="status">No pudimos cargar la lista de colegios. Revisa tu conexión e inténtalo de nuevo.<br><button type="button" class="btn btn-soft btn-sm" id="retry-school-catalog">Reintentar</button></div></div>`;
+  }
   if (!RURAL_SCHOOLS_READY) {
-    return `<div class="school-picker-loading">Cargando catálogo oficial de sedes rurales…</div>`;
+    return `<div class="school-picker"><div class="school-picker-loading" role="status">Cargando catálogo oficial de sedes rurales…</div></div>`;
   }
   const departments = [...new Set(RURAL_SCHOOLS.map(s => s.departamento))].sort((a,b) => a.localeCompare(b));
   const selected = getSchoolById(authSelectedSchoolId);
@@ -1809,18 +1823,26 @@ function schoolPickerHtml() {
 }
 
 async function loadRuralSchoolCatalog() {
-  try {
-    const response = await fetch("./data/colegios_rurales_2024.json", { cache: "default" });
-    if (!response.ok) throw new Error("catalogo");
-    const payload = await response.json();
-    RURAL_SCHOOLS = Array.isArray(payload.records) ? payload.records : [];
-    RURAL_SCHOOLS_READY = true;
-    return true;
-  } catch (e) {
-    RURAL_SCHOOLS = [];
-    RURAL_SCHOOLS_READY = false;
-    return false;
-  }
+  if (RURAL_SCHOOLS_READY && !RURAL_SCHOOLS_ERROR) return true;
+  if (schoolCatalogRequest) return schoolCatalogRequest;
+  schoolCatalogRequest = (async () => {
+    try {
+      const { response, data: payload } = await fetchJsonWithTimeout("./data/colegios_rurales_2024.json", { cache: "default" }, 12_000);
+      if (!response.ok) throw new Error("catalogo");
+      RURAL_SCHOOLS = Array.isArray(payload.records) ? payload.records : [];
+      RURAL_SCHOOLS_READY = true;
+      RURAL_SCHOOLS_ERROR = false;
+      return true;
+    } catch (e) {
+      RURAL_SCHOOLS = [];
+      RURAL_SCHOOLS_READY = true;
+      RURAL_SCHOOLS_ERROR = true;
+      return false;
+    } finally {
+      schoolCatalogRequest = null;
+    }
+  })();
+  return schoolCatalogRequest;
 }
 
 function renderSchoolPickerOnly() {
@@ -1851,20 +1873,16 @@ function authApiUrl(path) {
 
 async function authApiRequest(path, payload) {
   let response;
+  let data;
   try {
-    response = await fetch(authApiUrl(path), {
+    ({ response, data } = await fetchJsonWithTimeout(authApiUrl(path), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    }, 15_000));
   } catch (error) {
-    throw new Error("No se pudo conectar con AULA. Revisa tu conexión y que el servidor esté activo.");
-  }
-  let data;
-  try {
-    data = await response.json();
-  } catch (error) {
-    throw new Error("El servidor de AULA devolvió una respuesta inválida.");
+    if (error instanceof SyntaxError) throw new Error("El servidor de AulaYa devolvió una respuesta inválida.");
+    throw new Error("No se pudo conectar con AulaYa. Revisa tu conexión e inténtalo de nuevo.");
   }
   if (!response.ok) {
     const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
@@ -2042,18 +2060,19 @@ async function doRegistro() {
     STATE.student = { name:account.nombre, grade:account.grado || "", salon:account.salon || "" };
     STATE.notifications = [{
       id: "welcome-niko-" + Date.now(), type:"aula", category:"AULA", avatar:"niko", unread:true, time:"Ahora",
-      title:"¡Bienvenido a AULA! 👋",
+      title:"¡Bienvenido a AulaYa! 👋",
       body:`¡Hola, ${account.nombre.trim()}! Soy Niko. Cuando un docente te vincule a una clase, aquí recibirás tus temas y actividades.`
     }];
     updateState(STATE);
     if (window.AULA_STREAK) window.AULA_STREAK.initializeForNewStudent(account.correo);
+    void loadAulaQuestionBank();
     go("inicio");
   } else {
     STATE = freshUserState(account);
     STATE.auth = { role:"profesor", nombre:account.nombre, correo:account.correo, colegioId:account.colegioId, materias:account.materias || "todas" };
     STATE.notifications = [{
       id:"welcome-teacher-" + Date.now(), type:"aula", category:"AULA", avatar:"niko", unread:true, time:"Ahora",
-      title:"¡Bienvenido a AULA, Profe! 👋",
+      title:"¡Bienvenido a AulaYa, profe! 👋",
       body:`¡Hola, ${account.nombre.trim()}! Soy Niko. Tu espacio docente ya está listo. Crea tu primera clase y comienza a acompañar a tus estudiantes.`
     }];
     updateState(STATE);
@@ -2101,9 +2120,10 @@ function completeLogin(user) {
     syncStudentClassContent();
     updateState(STATE);
     go("inicio");
+    void loadAulaQuestionBank();
   } else {
     if (!Array.isArray(STATE.notifications) || !STATE.notifications.length) {
-      STATE.notifications=[{id:"welcome-teacher-"+Date.now(),type:"aula",category:"AULA",avatar:"niko",unread:true,time:"Ahora",title:"¡Bienvenido de nuevo a AULA! 👋",body:`¡Hola, ${user.nombre}! Soy Niko. Tu espacio docente está listo.`}];
+      STATE.notifications=[{id:"welcome-teacher-"+Date.now(),type:"aula",category:"AULA",avatar:"niko",unread:true,time:"Ahora",title:"¡Bienvenido de nuevo a AulaYa! 👋",body:`¡Hola, ${user.nombre}! Soy Niko. Tu espacio docente está listo.`}];
     }
     updateState(STATE);
     go("docente");
@@ -2608,7 +2628,7 @@ function renderTeacherEstudianteDetalle(classId, idx) {
       <h3>¿Cómo va?</h3>
       <p>${st === "al_dia" ? "Va bien: su promedio se calcula únicamente con sesiones que realmente completó." : st === "sin_iniciar" ? "Todavía no ha completado ninguna sesión. Su progreso aparece en 0% hasta que exista un resultado real." : "Su promedio actual se calcula únicamente con las sesiones que realmente completó."}</p>
       <p class="hint">Fórmula: ${sessions.length ? sessions.map(s => Math.round(Number(s.score||0)) + "%").join(" + ") + " ÷ " + sessions.length + " = " + p + "%" : "sin sesiones = 0%"}.</p>
-      <p class="hint">Este estado lo calcula AULA a partir de la actividad del estudiante. El docente no lo cambia manualmente.</p>
+      <p class="hint">Este estado lo calcula AulaYa a partir de la actividad del estudiante. El docente no lo cambia manualmente.</p>
     </div>`;
 }
 
@@ -2657,7 +2677,7 @@ function renderTeacherRecomendaciones() {
     <div class="teacher-grid">
       <div class="form-card">
         <h3>Crear recomendación</h3>
-        <p class="hint">Selecciona clase, tema y recursos. El tema se sugiere según el grado de la clase y las materias que dictas, tomando como referencia la malla académica de AULA.</p>
+        <p class="hint">Selecciona clase, tema y recursos. El tema se sugiere según el grado de la clase y las materias que dictas, tomando como referencia la malla académica de AulaYa.</p>
 
         <div class="field">
           <label>Clase</label>
@@ -2920,6 +2940,14 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("click", (e) => {
   const el = e.target;
+
+  if (el.closest("#retry-school-catalog")) {
+    RURAL_SCHOOLS_READY = false;
+    RURAL_SCHOOLS_ERROR = false;
+    renderSchoolPickerOnly();
+    loadRuralSchoolCatalog().then(() => renderSchoolPickerOnly());
+    return;
+  }
 
   const installSlmBtn=el.closest("#niko-slm-install");
   if(installSlmBtn){
@@ -3274,7 +3302,7 @@ document.addEventListener("click", (e) => {
   if (temaChip) {
     const tema = decodeURIComponent(temaChip.dataset.tema);
     if (tema === MALLA_TEMA_CON_LECCION) go("tema/fracciones");
-    else showToast(`"${tema}" llega pronto a AULA — mientras tanto sigue practicando con ${MALLA_TEMA_CON_LECCION}.`);
+    else showToast(`"${tema}" llega pronto a AulaYa; mientras tanto, sigue practicando con ${MALLA_TEMA_CON_LECCION}.`);
     return;
   }
 
@@ -3386,7 +3414,7 @@ document.addEventListener("click", (e) => {
     const cls = classById(classId);
     const user = findUserByEmail(correo);
     if (!user || user.role !== "estudiante") {
-      showToast("Primero el estudiante debe tener una cuenta de AULA con ese correo.");
+      showToast("Primero el estudiante debe tener una cuenta de AulaYa con ese correo.");
       return;
     }
     if (!cls) { showToast("No se encontró la clase."); return; }
@@ -3561,14 +3589,17 @@ document.addEventListener("input", (e) => {
     authSelectedSchoolId = "";
     const hidden = document.getElementById("bv-colegio");
     if (hidden) hidden.value = "";
-    const results = document.getElementById("bv-colegio-resultados");
-    if (!results) return;
-    const matches = schoolSearchMatches();
-    const rows = schoolSearchResults(matches);
-    results.innerHTML = rows.map(schoolResultHtml).join("") ||
-      `<div class="school-empty">No encontramos coincidencias. Prueba otro nombre o cambia los filtros.</div>`;
-    const summary = document.getElementById("bv-colegio-resumen");
-    if (summary) summary.textContent = schoolSearchSummary(matches.length);
+    clearTimeout(schoolSearchTimer);
+    schoolSearchTimer = setTimeout(() => {
+      const results = document.getElementById("bv-colegio-resultados");
+      if (!results) return;
+      const matches = schoolSearchMatches();
+      const rows = schoolSearchResults(matches);
+      results.innerHTML = rows.map(schoolResultHtml).join("") ||
+        `<div class="school-empty">No encontramos coincidencias. Prueba otro nombre o cambia los filtros.</div>`;
+      const summary = document.getElementById("bv-colegio-resumen");
+      if (summary) summary.textContent = schoolSearchSummary(matches.length);
+    }, 120);
   }
 });
 document.addEventListener("change", (e) => {
@@ -3626,7 +3657,7 @@ function afterRender(route, param) {
 
 // ---------------------------------------------------------------------
 // Notificaciones en tiempo casi real: las recomendaciones/actividades del
-// docente se derivan de las clases compartidas y se revisan cada pocos
+// docente se derivan de las clases compartidas y se revisan periódicamente
 // segundos mientras la app está abierta. Si no hay internet, sigue usando
 // la última copia local.
 // ---------------------------------------------------------------------
@@ -3657,7 +3688,7 @@ async function refreshStudentNotificationsLive() {
 }
 function startStudentNotificationPolling() {
   if (studentNotificationPollId) return;
-  studentNotificationPollId = setInterval(() => { if (isOnline && !document.hidden) refreshStudentNotificationsLive().catch(()=>{}); }, 3000);
+  studentNotificationPollId = setInterval(() => { if (isOnline && !document.hidden) refreshStudentNotificationsLive().catch(()=>{}); }, 30_000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshStudentNotificationsLive(); });
   window.addEventListener("online", refreshStudentNotificationsLive);
   window.addEventListener("storage", (e) => {
@@ -3712,9 +3743,9 @@ updateConnStatusUI();
 initDb();
 startStudentNotificationPolling();
 
-// El catálogo forma parte del paquete offline. Esperamos su carga antes del
-// primer render para que el registro nunca muestre una lista ficticia.
-Promise.all([loadRuralSchoolCatalog(), loadAulaQuestionBank()]).finally(() => render());
+// Render immediately; the question bank loads in the background.
+render();
+if (STATE.auth?.role === "estudiante") void loadAulaQuestionBank();
 
 window.AULA_getStreak=()=>window.AULA_STREAK.get();window.AULA_completeLesson=(m)=>window.AULA_STREAK.completeLesson(m);window.AULA_markLessonCompleted=window.AULA_completeLesson;
 
@@ -3727,11 +3758,11 @@ document.addEventListener("aula:streak-increased", function(e) {
   render();
 });
 
-/* AULA — sincronización incremental de contenidos de clase.
+/* AulaYa — sincronización incremental de contenidos de clase.
    La PWA revisa cada 60 s mientras está abierta/activa. Solo materializa
    recomendaciones nuevas o cuya versión haya cambiado. */
 (function(){
-  const DB_NAME="AULA_OFFLINE_CONTENT_V1", STORE="lessons", POLL_MS=3000;
+  const DB_NAME="AULA_OFFLINE_CONTENT_V1", STORE="lessons", POLL_MS=60_000;
   function openDB(){
     return new Promise((resolve,reject)=>{
       if(!window.indexedDB){ reject(new Error("IndexedDB no disponible")); return; }

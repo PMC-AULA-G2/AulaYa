@@ -1,5 +1,5 @@
-/* AULA Tutor Engine v7 — offline curricular tutor
- * Uses the complete AULA curriculum catalog for grades 1-5 and 8-10.
+/* AulaYa Tutor Engine v7 — offline curricular tutor
+ * Uses the complete AulaYa curriculum catalog for grades 1-5 and 8-10.
  * Topic-locked: when a teacher assigns a topic, explanations/examples/exercises
  * stay on that exact topic. This is a deterministic offline tutor layer; it is
  * not presented as a trained neural SLM.

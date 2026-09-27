@@ -3,7 +3,7 @@
 // "Funcionamiento offline y online" del diseño: videos, ejercicios, juegos,
 // Niko (SLM) y progreso deben seguir disponibles sin internet).
 
-const CACHE_NAME = "aula-cache-v18";
+const CACHE_NAME = "aula-cache-v21";
 // caché aparte para videos descargados a propósito por el usuario (ver
 // downloadVideo() en js/app.js) — NO se pre-carga como CORE_ASSETS: el
 // estudiante decide qué video guardar para verlo sin internet, porque los
@@ -23,7 +23,6 @@ const CORE_ASSETS = [
   "./js/streak.js",
   "./js/config.js",
   "./data/microvideo_catalog.json",
-  "./data/colegios_rurales_2024.json",
   "./data/colegios_catalog_meta.json",
   "./data/aula_question_bank.json",
   "./manifest.json",
@@ -116,19 +115,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Estrategia para el shell: cache-first, con actualización en segundo plano.
+  // Cache-first evita volver a descargar bancos y catálogos pesados en cada visita.
   event.respondWith(
     caches.match(event.request, { ignoreSearch: false }).then((cached) => {
-      const network = fetch(event.request)
+      if (cached) return cached;
+      return fetch(event.request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
-        })
-        .catch(() => cached);
-      return cached || network;
+        });
     })
   );
 });

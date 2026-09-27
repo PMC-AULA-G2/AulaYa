@@ -1,7 +1,7 @@
 {
-  "name": "AULA - Aprende hoy, llega más lejos",
-  "short_name": "AULA",
-  "description": "Plataforma educativa offline-first con tutor IA (Niko), gamificación y panel docente.",
+  "name": "AulaYa",
+  "short_name": "AulaYa",
+  "description": "Plataforma educativa con tutor Niko, retos, camino de aprendizaje y herramientas para docentes. Disponible sin conexión.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
