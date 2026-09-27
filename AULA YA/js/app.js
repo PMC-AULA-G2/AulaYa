@@ -302,6 +302,7 @@ function render() {
 
   if (route === "bienvenida") {
     studentShell.style.display = "flex";
+    studentShell.classList.add("auth-view");
     teacherShell.style.display = "none";
     bottomNav.style.display = "none";
     viewRoot.innerHTML = renderBienvenida();
@@ -313,6 +314,7 @@ function render() {
 
   if (route === "docente") {
     studentShell.style.display = "none";
+    studentShell.classList.remove("auth-view");
     teacherShell.style.display = "flex";
     bottomNav.style.display = "none";
     renderTeacher(param || "inicio");
@@ -321,6 +323,7 @@ function render() {
   }
 
   studentShell.style.display = "flex";
+  studentShell.classList.remove("auth-view");
   teacherShell.style.display = "none";
   bottomNav.style.display = "flex";
 
@@ -350,7 +353,10 @@ function render() {
   // resaltar nav inferior
   const navGroup = { inicio: "inicio", gamificacion: "gamificacion", "niko-chat": "niko-chat", perfil: "perfil", ranking: "ranking" }[route] || (route === "tema" || route === "video" || route === "ejercicios" ? "inicio" : "inicio");
   document.querySelectorAll(".nav-item").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.route === navGroup);
+    const isActive = btn.dataset.route === navGroup;
+    btn.classList.toggle("active", isActive);
+    if (isActive) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
   });
 
   afterRender(route, param);
@@ -1494,7 +1500,7 @@ function getSchoolById(id) {
   return RURAL_SCHOOLS.find((s) => String(s.id) === String(id)) || null;
 }
 
-function schoolSearchResults() {
+function schoolSearchMatches() {
   const q = normalizeSchoolText(authSchoolSearch || document.getElementById("bv-colegio-busqueda")?.value);
   const dept = authSelectedDepartment || document.getElementById("bv-colegio-depto")?.value || "";
   const muni = authSelectedMunicipality || document.getElementById("bv-colegio-muni")?.value || "";
@@ -1511,8 +1517,43 @@ function schoolSearchResults() {
       return hay.includes(q);
     });
   }
+  return list;
+}
+
+function schoolSearchResults(matches = schoolSearchMatches()) {
+  const q = normalizeSchoolText(authSchoolSearch || document.getElementById("bv-colegio-busqueda")?.value);
+  const dept = authSelectedDepartment || document.getElementById("bv-colegio-depto")?.value || "";
+  const muni = authSelectedMunicipality || document.getElementById("bv-colegio-muni")?.value || "";
   // En una búsqueda vacía mostramos pocas opciones; nunca pintamos miles de nodos.
-  return list.slice(0, q || dept || muni ? 30 : 8);
+  return matches.slice(0, q || dept || muni ? 30 : 8);
+}
+
+function schoolSearchSummary(matchCount = schoolSearchMatches().length) {
+  const q = normalizeSchoolText(authSchoolSearch || document.getElementById("bv-colegio-busqueda")?.value);
+  const dept = authSelectedDepartment || document.getElementById("bv-colegio-depto")?.value || "";
+  const muni = authSelectedMunicipality || document.getElementById("bv-colegio-muni")?.value || "";
+
+  if (!q && !dept && !muni) {
+    return `Mostrando 8 sedes para explorar · busca por nombre, municipio o código DANE`;
+  }
+  if (!matchCount) return "No hay coincidencias · prueba otro nombre o cambia los filtros";
+  if (matchCount > 30) return `${matchCount.toLocaleString("es-CO")} coincidencias · mostrando 30, afina tu búsqueda`;
+  return `${matchCount.toLocaleString("es-CO")} ${matchCount === 1 ? "coincidencia" : "coincidencias"}`;
+}
+
+function schoolResultHtml(s) {
+  const isSelected = String(s.id) === String(authSelectedSchoolId);
+  const place = `${s.municipio}, ${s.departamento}`;
+  return `
+    <button type="button" class="school-result ${isSelected ? "selected" : ""}"
+      data-school-id="${s.id}" aria-pressed="${isSelected}">
+      <span class="school-result-icon" aria-hidden="true">🏫</span>
+      <span class="school-result-info">
+        <strong>${s.nombre}</strong>
+        <small>${place} · ${s.tipo === "adscrita" ? "Sede adscrita" : "Sede principal"} · DANE ${s.id}</small>
+      </span>
+      <span class="school-result-check" aria-hidden="true">${isSelected ? "✓" : "›"}</span>
+    </button>`;
 }
 
 function schoolPickerHtml() {
@@ -1524,40 +1565,36 @@ function schoolPickerHtml() {
   const municipalities = [...new Set(RURAL_SCHOOLS
     .filter(s => !authSelectedDepartment || s.departamento === authSelectedDepartment)
     .map(s => s.municipio))].sort((a,b) => a.localeCompare(b));
-  const results = schoolSearchResults();
+  const matches = schoolSearchMatches();
+  const results = schoolSearchResults(matches);
 
   const resultHtml = results.length
-    ? results.map(s => `
-      <button type="button" class="school-result ${String(s.id) === String(authSelectedSchoolId) ? "selected" : ""}" data-school-id="${s.id}">
-        <span class="school-result-icon">🏫</span>
-        <span class="school-result-info">
-          <strong>${s.nombre}</strong>
-          <small>${s.municipio}, ${s.departamento} · ${s.tipo === "adscrita" ? "Sede adscrita" : "Sede principal"} · DANE ${s.id}</small>
-        </span>
-        <span class="school-result-check">${String(s.id) === String(authSelectedSchoolId) ? "✓" : "›"}</span>
-      </button>`).join("")
-    : `<div class="school-empty">No encontramos coincidencias. Prueba con otra parte del nombre, municipio o código DANE.</div>`;
+    ? results.map(schoolResultHtml).join("")
+    : `<div class="school-empty">No encontramos coincidencias. Prueba otro nombre o cambia los filtros.</div>`;
 
   return `
     <div class="school-picker">
-      <label>Colegio o sede educativa</label>
+      <label for="bv-colegio-busqueda">Colegio o sede educativa</label>
       <div class="school-search-wrap">
-        ${icon("search", 16)}
+        ${icon("search", 18)}
         <input id="bv-colegio-busqueda" type="search" autocomplete="off"
-          placeholder="Escribe el nombre, municipio o código DANE…" value="${authSchoolSearch || (selected ? selected.nombre : "")}" />
+          aria-label="Buscar colegio por nombre, municipio o código DANE"
+          aria-controls="bv-colegio-resultados" aria-describedby="bv-colegio-resumen"
+          placeholder="Nombre, municipio o código DANE…" value="${authSchoolSearch || (selected ? selected.nombre : "")}" />
       </div>
       <div class="school-filter-row">
-        <select id="bv-colegio-depto"><option value="">Todos los departamentos</option>
+        <select id="bv-colegio-depto" aria-label="Filtrar por departamento"><option value="">Todos los departamentos</option>
           ${departments.map(d => `<option value="${d}" ${d === authSelectedDepartment ? "selected" : ""}>${d}</option>`).join("")}
         </select>
-        <select id="bv-colegio-muni"><option value="">Todos los municipios</option>
+        <select id="bv-colegio-muni" aria-label="Filtrar por municipio"><option value="">Todos los municipios</option>
           ${municipalities.map(m => `<option value="${m}" ${m === authSelectedMunicipality ? "selected" : ""}>${m}</option>`).join("")}
         </select>
       </div>
-      <div class="school-catalog-note">🌱 ${RURAL_SCHOOLS.length.toLocaleString("es-CO")} sedes rurales · DANE Educación Formal 2024 · disponible sin conexión</div>
-      <div class="school-results" id="bv-colegio-resultados">${resultHtml}</div>
+      <div class="school-catalog-note">${RURAL_SCHOOLS.length.toLocaleString("es-CO")} sedes rurales · DANE Educación Formal 2024 · disponible sin conexión</div>
+      <div class="school-results-summary" id="bv-colegio-resumen" role="status" aria-live="polite">${schoolSearchSummary(matches.length)}</div>
+      <div class="school-results" id="bv-colegio-resultados" aria-label="Resultados de colegios">${resultHtml}</div>
       <input type="hidden" id="bv-colegio" value="${authSelectedSchoolId}" />
-      ${selected ? `<div class="school-selected"><b>✓ Seleccionado:</b> ${selected.nombre} · ${selected.municipio}, ${selected.departamento}</div>` : ""}
+      ${selected ? `<div class="school-selected" role="status"><b>✓ Colegio elegido:</b> ${selected.nombre} · ${selected.municipio}, ${selected.departamento}</div>` : ""}
     </div>`;
 }
 
@@ -1587,12 +1624,65 @@ function renderSchoolPickerOnly() {
 // ---------------------------------------------------------------------
 // Bienvenida — registro e inicio de sesión (estudiante o profesor)
 // ---------------------------------------------------------------------
-// Aviso de seguridad (ver README): esto es un prototipo. El PIN NO es una
-// contraseña segura — se guarda tal cual en el almacenamiento
-// compartido/local. Nunca uses una contraseña real aquí.
+// Credentials are validated by the account API; local profiles are kept
+// only to support the existing offline-first learning state.
 
 let authRole = "estudiante";
 let authTab = "registro";
+let authMode = "account";
+let recoveryEmail = "";
+let recoveryToken = "";
+
+function authApiUrl(path) {
+  const base = String(window.AULA_API_BASE_URL || "").replace(/\/+$/, "");
+  if (!base) throw new Error("Configura la URL del API de autenticación antes de iniciar sesión.");
+  return `${base}${path}`;
+}
+
+async function authApiRequest(path, payload) {
+  let response;
+  try {
+    response = await fetch(authApiUrl(path), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw new Error("No se pudo conectar con AULA. Revisa tu conexión y que el servidor esté activo.");
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error("El servidor de AULA devolvió una respuesta inválida.");
+  }
+  if (!response.ok) {
+    const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+    const error = new Error(detail || "No se pudo completar la solicitud.");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+function setAuthBusy(buttonId, busy) {
+  const button = document.getElementById(buttonId);
+  if (!button) return;
+  button.disabled = busy;
+  if (busy) {
+    button.dataset.idleLabel = button.textContent;
+    button.textContent = "Un momento…";
+  } else if (button.dataset.idleLabel) {
+    button.textContent = button.dataset.idleLabel;
+    delete button.dataset.idleLabel;
+  }
+}
+
+function escapeAuthHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]);
+}
 
 // Registro docente: "Todas" es una opción, no bloquea las materias.
 function toggleMateriasTodas(masterCheckbox) {
@@ -1630,7 +1720,7 @@ function renderBienvenida() {
       </div>
       <p class="hint">El curso y el salón se usan para mostrarte únicamente el ranking de tu propio salón.</p>
       ${schoolPickerHtml()}
-      <div class="field"><label>PIN (4 dígitos, no es una contraseña segura)</label><input id="bv-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></div>
+      <div class="field"><label>PIN de 4 dígitos</label><input id="bv-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></div>
       <button class="btn btn-primary" id="bv-registro-btn">Crear cuenta de estudiante</button>
   ` : `
       <div class="field"><label>Nombre completo</label><input id="bv-nombre" type="text" placeholder="Tu nombre" /></div>
@@ -1644,7 +1734,7 @@ function renderBienvenida() {
         </div>
         <p class="hint">Si dictas de todo, deja "Todas las materias" marcado. Si dictas solo algunas, desmárcala y elige cuáles — así en tu panel solo verás los temas de esas materias.</p>
       </div>
-      <div class="field"><label>PIN (4 dígitos, no es una contraseña segura)</label><input id="bv-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></div>
+      <div class="field"><label>PIN de 4 dígitos</label><input id="bv-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></div>
       <button class="btn btn-primary" id="bv-registro-btn">Crear cuenta de profesor</button>
   `;
 
@@ -1652,7 +1742,29 @@ function renderBienvenida() {
       <div class="field"><label>Correo</label><input id="bv-login-correo" type="email" placeholder="tucorreo@ejemplo.com" /></div>
       <div class="field"><label>PIN</label><input id="bv-login-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></div>
       <button class="btn btn-primary" id="bv-login-btn">Iniciar sesión</button>
+      <button class="auth-text-button" id="bv-recuperar-inicio" type="button">¿Olvidaste tu PIN? Recupera tu cuenta</button>
   `;
+  const recoveryFields = authMode === "recovery-request" ? `
+      <h2>Recupera tu cuenta</h2>
+      <p class="auth-recovery-copy">Te enviaremos un código de 6 dígitos al correo de tu cuenta. También podrás migrar una cuenta guardada en este dispositivo.</p>
+      <div class="field"><label for="bv-recuperar-correo">Correo de tu cuenta</label><input id="bv-recuperar-correo" type="email" autocomplete="email" value="${escapeAuthHtml(recoveryEmail)}" placeholder="tucorreo@ejemplo.com" /></div>
+      <button class="btn btn-primary" id="bv-recuperar-enviar">Enviar código</button>
+      <button class="auth-text-button" data-auth-recovery-back type="button">Volver a iniciar sesión</button>
+  ` : authMode === "recovery-code" ? `
+      <h2>Revisa tu correo</h2>
+      <p class="auth-recovery-copy">Si el correo corresponde a una cuenta, te enviaremos un código. Escríbelo aquí; vence en 10 minutos.</p>
+      <div class="field"><label for="bv-recuperar-codigo">Código de 6 dígitos</label><input id="bv-recuperar-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" /></div>
+      <button class="btn btn-primary" id="bv-recuperar-verificar">Verificar código</button>
+      <button class="auth-text-button" data-auth-recovery-back type="button">Volver a iniciar sesión</button>
+  ` : `
+      <h2>Crea un PIN nuevo</h2>
+      <p class="auth-recovery-copy">Elige un PIN nuevo de 4 dígitos y confírmalo para recuperar tu cuenta.</p>
+      <div class="field"><label for="bv-recuperar-pin">PIN nuevo</label><input id="bv-recuperar-pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="4" placeholder="••••" /></div>
+      <div class="field"><label for="bv-recuperar-confirmar">Confirma el PIN nuevo</label><input id="bv-recuperar-confirmar" type="password" inputmode="numeric" autocomplete="new-password" maxlength="4" placeholder="••••" /></div>
+      <button class="btn btn-primary" id="bv-recuperar-guardar">Guardar PIN nuevo</button>
+      <button class="auth-text-button" data-auth-recovery-back type="button">Volver a iniciar sesión</button>
+  `;
+  const isRecovery = authMode !== "account";
 
   return `
   <div class="screen bienvenida-screen">
@@ -1660,24 +1772,24 @@ function renderBienvenida() {
     ${nikoGreetImg("lg")}
     <h1 style="text-align:center;">Aprende hoy, llega más lejos</h1>
 
-    <div class="role-toggle">
+    ${isRecovery ? "" : `<div class="role-toggle">
       <button class="${authRole === "estudiante" ? "active" : ""}" data-auth-role="estudiante">${icon("cap", 16)} Soy estudiante</button>
       <button class="${authRole === "profesor" ? "active" : ""}" data-auth-role="profesor">${icon("book", 16)} Soy profesor</button>
-    </div>
+    </div>`}
 
-    <div class="pill-tabs" style="margin-top:14px;">
+    ${isRecovery ? "" : `<div class="pill-tabs" style="margin-top:14px;">
       <button data-auth-tab="registro" class="${authTab === "registro" ? "active" : ""}">Crear cuenta</button>
       <button data-auth-tab="login" class="${authTab === "login" ? "active" : ""}">Ya tengo cuenta</button>
-    </div>
+    </div>`}
 
     <div class="form-card" style="margin-top:14px;">
-      ${authTab === "registro" ? registroFields : loginFields}
-      <p class="hint" style="margin-top:10px;">Prototipo educativo — el PIN se guarda solo para la demo, no es un mecanismo de seguridad real.</p>
+      ${isRecovery ? recoveryFields : (authTab === "registro" ? registroFields : loginFields)}
+      ${isRecovery ? "" : `<p class="hint" style="margin-top:10px;">El PIN tiene 4 dígitos. La cuenta y su recuperación requieren conexión a internet.</p>`}
     </div>
   </div>`;
 }
 
-function doRegistro() {
+async function doRegistro() {
   const nombre = (document.getElementById("bv-nombre") || {}).value || "";
   const correo = (document.getElementById("bv-correo") || {}).value || "";
   const colegioId = authSelectedSchoolId || (document.getElementById("bv-colegio") || {}).value || "";
@@ -1698,40 +1810,49 @@ function doRegistro() {
     showToast("Selecciona tu colegio o sede educativa del catálogo.");
     return;
   }
-  if (findUserByEmail(correo)) {
-    showToast("Ya existe una cuenta con ese correo. Intenta iniciar sesión.");
+  const previousLocalUser = findUserByEmail(correo);
+  if (previousLocalUser?.pin && !previousLocalUser.correo.endsWith("@aula.demo")) {
+    showToast("Ya hay un perfil local con ese correo. Ve a “Ya tengo cuenta” y recupera el PIN para migrarlo.");
     return;
   }
 
   const user = { role: authRole, nombre: nombre.trim(), correo: correo.trim(), colegioId, grado: grado || "", salon: salon || "", pin };
   if (authRole === "profesor") user.materias = materias;
   if (!isActiveSession(user.correo) && loadActiveSessions().length >= 5) { showToast("Ya tienes 5 cuentas iniciadas. Cierra una sesión antes de agregar otra."); return; }
-  persistUser(user);
-  addActiveSession(user);
+  setAuthBusy("bv-registro-btn", true);
+  try {
+    const { user: account } = await authApiRequest("/auth/register", user);
+    persistUser(account);
+    addActiveSession(account);
 
-  if (authRole === "estudiante") {
+  if (account.role === "estudiante") {
     // Cuenta nueva = estado nuevo por correo: cero progreso, cero monedas, cero racha.
-    STATE = freshUserState(user);
-    STATE.auth = { role:"estudiante", nombre:user.nombre, correo:user.correo, colegioId, grado:user.grado || grado || "", salon:user.salon || "" };
-    STATE.student = { name:user.nombre, grade:user.grado || grado || "", salon:user.salon || "" };
+    STATE = freshUserState(account);
+    STATE.auth = { role:"estudiante", nombre:account.nombre, correo:account.correo, colegioId:account.colegioId, grado:account.grado || "", salon:account.salon || "" };
+    STATE.student = { name:account.nombre, grade:account.grado || "", salon:account.salon || "" };
     STATE.notifications = [{
       id: "welcome-niko-" + Date.now(), type:"aula", category:"AULA", avatar:"niko", unread:true, time:"Ahora",
       title:"¡Bienvenido a AULA! 👋",
-      body:`¡Hola, ${user.nombre.trim()}! Soy Niko. Cuando un docente te vincule a una clase, aquí recibirás tus temas y actividades.`
+      body:`¡Hola, ${account.nombre.trim()}! Soy Niko. Cuando un docente te vincule a una clase, aquí recibirás tus temas y actividades.`
     }];
     updateState(STATE);
-    if (window.AULA_STREAK) window.AULA_STREAK.initializeForNewStudent(user.correo);
+    if (window.AULA_STREAK) window.AULA_STREAK.initializeForNewStudent(account.correo);
     go("inicio");
   } else {
-    STATE = freshUserState(user);
-    STATE.auth = { role:"profesor", nombre:user.nombre, correo:user.correo, colegioId, materias:user.materias || "todas" };
+    STATE = freshUserState(account);
+    STATE.auth = { role:"profesor", nombre:account.nombre, correo:account.correo, colegioId:account.colegioId, materias:account.materias || "todas" };
     STATE.notifications = [{
       id:"welcome-teacher-" + Date.now(), type:"aula", category:"AULA", avatar:"niko", unread:true, time:"Ahora",
       title:"¡Bienvenido a AULA, Profe! 👋",
-      body:`¡Hola, ${user.nombre.trim()}! Soy Niko. Tu espacio docente ya está listo. Crea tu primera clase y comienza a acompañar a tus estudiantes.`
+      body:`¡Hola, ${account.nombre.trim()}! Soy Niko. Tu espacio docente ya está listo. Crea tu primera clase y comienza a acompañar a tus estudiantes.`
     }];
     updateState(STATE);
     go("docente");
+  }
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setAuthBusy("bv-registro-btn", false);
   }
 }
 
@@ -1754,12 +1875,9 @@ function applyDemoAccountSeed(user, state) {
   return state;
 }
 
-function doLogin() {
-  const correo = (document.getElementById("bv-login-correo") || {}).value || "";
-  const pin = (document.getElementById("bv-login-pin") || {}).value || "";
-  const user = findUserByEmail(correo);
-  if (!user || user.pin !== pin) { showToast("Correo o PIN incorrecto."); return; }
+function completeLogin(user) {
   if (!isActiveSession(user.correo) && loadActiveSessions().length >= 5) { showToast("Ya tienes 5 cuentas iniciadas. Cierra una sesión antes de agregar otra."); return; }
+  registerUserLocal(user);
   const saved = loadUserState(user);
   STATE = applyDemoAccountSeed(user, Object.assign(freshUserState(user), saved));
   STATE.auth = { role:user.role, nombre:user.nombre, correo:user.correo, colegioId:user.colegioId, grado:user.grado || "", salon:user.salon || "", materias:user.materias || "todas" };
@@ -1782,10 +1900,118 @@ function doLogin() {
   }
 }
 
+async function doLogin() {
+  const correo = ((document.getElementById("bv-login-correo") || {}).value || "").trim();
+  const pin = (document.getElementById("bv-login-pin") || {}).value || "";
+  if (!correo || !pin) { showToast("Escribe tu correo y PIN."); return; }
+  setAuthBusy("bv-login-btn", true);
+  try {
+    const { user } = await authApiRequest("/auth/login", { correo, pin });
+    completeLogin(user);
+  } catch (error) {
+    const localUser = findUserByEmail(correo);
+    if (error.status === 401 && localUser?.correo.endsWith("@aula.demo") && localUser.pin === pin) {
+      completeLogin(localUser);
+      return;
+    }
+    if (error.status === 401 && localUser && localUser.pin === pin) {
+      recoveryEmail = localUser.correo;
+      authMode = "recovery-request";
+      render();
+      showToast("Verifica tu correo para migrar esta cuenta guardada en el dispositivo.");
+      return;
+    }
+    if (!error.status && localUser?.pin === pin) {
+      completeLogin(localUser);
+      showToast("Sesión local iniciada. La recuperación por correo requiere conexión.");
+      return;
+    }
+    showToast(error.message);
+  } finally {
+    setAuthBusy("bv-login-btn", false);
+  }
+}
+
+async function requestAccountRecovery() {
+  recoveryEmail = (document.getElementById("bv-recuperar-correo")?.value || "").trim();
+  if (!recoveryEmail) { showToast("Escribe el correo de tu cuenta."); return; }
+  setAuthBusy("bv-recuperar-enviar", true);
+  try {
+    await authApiRequest("/auth/recovery/request", { correo: recoveryEmail });
+    authMode = "recovery-code";
+    render();
+    document.getElementById("bv-recuperar-codigo")?.focus();
+    showToast("Si el correo corresponde a una cuenta, recibirás un código.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setAuthBusy("bv-recuperar-enviar", false);
+  }
+}
+
+async function verifyAccountRecovery() {
+  const codigo = (document.getElementById("bv-recuperar-codigo")?.value || "").trim();
+  if (!/^\d{6}$/.test(codigo)) { showToast("Escribe el código de 6 dígitos."); return; }
+  setAuthBusy("bv-recuperar-verificar", true);
+  try {
+    const result = await authApiRequest("/auth/recovery/verify", { correo: recoveryEmail, codigo });
+    recoveryToken = result.token;
+    authMode = "recovery-pin";
+    render();
+    document.getElementById("bv-recuperar-pin")?.focus();
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setAuthBusy("bv-recuperar-verificar", false);
+  }
+}
+
+async function resetAccountPin() {
+  const pin = document.getElementById("bv-recuperar-pin")?.value || "";
+  const confirmation = document.getElementById("bv-recuperar-confirmar")?.value || "";
+  if (!/^\d{4}$/.test(pin)) { showToast("El PIN nuevo debe tener 4 dígitos."); return; }
+  if (pin !== confirmation) { showToast("Los PIN no coinciden."); return; }
+  const localUser = findUserByEmail(recoveryEmail);
+  const legacyProfile = localUser ? {
+    correo: localUser.correo,
+    role: localUser.role,
+    nombre: localUser.nombre,
+    colegioId: localUser.colegioId,
+    grado: localUser.grado || "",
+    salon: localUser.salon || "",
+    materias: localUser.materias || "todas",
+  } : undefined;
+  setAuthBusy("bv-recuperar-guardar", true);
+  try {
+    await authApiRequest("/auth/recovery/reset", {
+      correo: recoveryEmail,
+      token: recoveryToken,
+      nuevo_pin: pin,
+      legacy_profile: legacyProfile,
+    });
+    recoveryToken = "";
+    if (localUser) {
+      const migratedUser = { ...localUser };
+      delete migratedUser.pin;
+      registerUserLocal(migratedUser);
+    }
+    authMode = "account";
+    authTab = "login";
+    render();
+    showToast("PIN actualizado. Ya puedes iniciar sesión.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setAuthBusy("bv-recuperar-guardar", false);
+  }
+}
+
 function doLogout() {
   removeActiveSession(STATE.auth?.correo || "");
   updateState({ auth: null });
   authTab = "registro";
+  authMode = "account";
+  recoveryToken = "";
   location.hash = "#/bienvenida";
   render();
 }
@@ -2788,9 +3014,26 @@ document.addEventListener("click", (e) => {
 
   // bienvenida: elegir rol / tab
   const authRoleBtn = el.closest("[data-auth-role]");
-  if (authRoleBtn) { authRole = authRoleBtn.dataset.authRole; render(); return; }
+  if (authRoleBtn) { authMode = "account"; authRole = authRoleBtn.dataset.authRole; render(); return; }
   const authTabBtn = el.closest("[data-auth-tab]");
-  if (authTabBtn) { authTab = authTabBtn.dataset.authTab; render(); return; }
+  if (authTabBtn) { authMode = "account"; authTab = authTabBtn.dataset.authTab; render(); return; }
+  if (el.closest("#bv-recuperar-inicio")) {
+    recoveryEmail = (document.getElementById("bv-login-correo")?.value || "").trim();
+    authMode = "recovery-request";
+    render();
+    document.getElementById("bv-recuperar-correo")?.focus();
+    return;
+  }
+  if (el.closest("[data-auth-recovery-back]")) {
+    authMode = "account";
+    authTab = "login";
+    recoveryToken = "";
+    render();
+    return;
+  }
+  if (el.closest("#bv-recuperar-enviar")) { requestAccountRecovery(); return; }
+  if (el.closest("#bv-recuperar-verificar")) { verifyAccountRecovery(); return; }
+  if (el.closest("#bv-recuperar-guardar")) { resetAccountPin(); return; }
   const schoolBtn = el.closest("[data-school-id]");
   if (schoolBtn) {
     authSelectedSchoolId = schoolBtn.dataset.schoolId;
@@ -3036,13 +3279,12 @@ document.addEventListener("input", (e) => {
     if (hidden) hidden.value = "";
     const results = document.getElementById("bv-colegio-resultados");
     if (!results) return;
-    const rows = schoolSearchResults();
-    results.innerHTML = rows.map(s => `
-      <button type="button" class="school-result" data-school-id="${s.id}">
-        <span class="school-result-icon">🏫</span>
-        <span class="school-result-info"><strong>${s.nombre}</strong><small>${s.municipio}, ${s.departamento} · ${s.tipo === "adscrita" ? "Sede adscrita" : "Sede principal"} · DANE ${s.id}</small></span>
-        <span class="school-result-check">›</span>
-      </button>`).join("") || `<div class="school-empty">No encontramos coincidencias. Prueba con otra parte del nombre.</div>`;
+    const matches = schoolSearchMatches();
+    const rows = schoolSearchResults(matches);
+    results.innerHTML = rows.map(schoolResultHtml).join("") ||
+      `<div class="school-empty">No encontramos coincidencias. Prueba otro nombre o cambia los filtros.</div>`;
+    const summary = document.getElementById("bv-colegio-resumen");
+    if (summary) summary.textContent = schoolSearchSummary(matches.length);
   }
 });
 document.addEventListener("change", (e) => {
@@ -3069,6 +3311,10 @@ document.addEventListener("change", (e) => {
 // Enter para enviar mensajes de chat
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
+  if (e.target.id === "bv-recuperar-correo") { e.preventDefault(); requestAccountRecovery(); return; }
+  if (e.target.id === "bv-recuperar-codigo") { e.preventDefault(); verifyAccountRecovery(); return; }
+  if (e.target.id === "bv-recuperar-confirmar") { e.preventDefault(); resetAccountPin(); return; }
+  if (e.target.id === "bv-login-correo" || e.target.id === "bv-login-pin") { e.preventDefault(); doLogin(); return; }
   if (e.target.id === "mini-chat-input") { e.preventDefault(); doMiniChatSend(); }
   if (e.target.id === "niko-full-input") { e.preventDefault(); doNikoFullSend(); }
 });

@@ -59,11 +59,25 @@ Antes de entrar, cada persona crea una cuenta o inicia sesión como
 **estudiante** o **profesor** (pantalla `#/bienvenida`): nombre, correo,
 colegio (ver más abajo) y un PIN de 4 dígitos.
 
-⚠️ **Esto es un prototipo, no un sistema de autenticación real.** El PIN
-se guarda tal cual (sin cifrar) en `localStorage` — y, cuando la app corre
-publicada como Artifact con la capacidad `db`, también en una base de
-datos compartida entre dispositivos. Nunca debe usarse una contraseña
-real aquí; es solo para poder demostrar el flujo de registro/login.
+Las nuevas cuentas se registran en el API FastAPI y su PIN se guarda
+verificado con PBKDF2; el navegador conserva solo el perfil que necesita
+la interfaz. En **“Ya tengo cuenta”** se puede elegir **“¿Olvidaste tu
+PIN?”** para recibir un código de un solo uso por correo (vence en 10
+minutos). Los códigos tienen límite de intentos y de envíos.
+
+Las cuentas creadas por versiones anteriores solo existían en el
+almacenamiento local del navegador. En el mismo dispositivo, pueden
+trasladarse al servicio central verificando el correo desde **“Recupera
+tu cuenta”**. Las cuentas de demostración `@aula.demo` siguen disponibles
+para la demo local y no reciben correos. El progreso educativo todavía
+se guarda localmente o en la capacidad `db` del Artifact; centralizar las
+credenciales no sincroniza por sí solo el progreso entre dispositivos.
+
+La recuperación real requiere levantar el API, configurar una base de
+datos persistente y proporcionar credenciales SMTP. Consulta
+[`slm/README.md`](./slm/README.md) para la configuración. En producción,
+sirve tanto la web como el API mediante HTTPS, limita CORS al dominio de
+la aplicación y no publiques el archivo `slm/.env`.
 
 Un estudiante puede escribir el **código de clase** de su profesor al
 registrarse para unirse automáticamente a esa clase (por ejemplo

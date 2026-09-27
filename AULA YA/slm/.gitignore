@@ -1,0 +1,5 @@
+.env
+.venv/
+__pycache__/
+data/aula_auth.sqlite
+data/aula_rag.sqlite

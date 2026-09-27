@@ -367,12 +367,11 @@ function schoolLabel(s) {
   return `${s.nombre} — ${s.municipio}, ${s.departamento}`;
 }
 // ---------------------------------------------------------------------
-// Cuentas (registro / inicio de sesión) — demo, sin backend real
+// Perfiles en caché local y cuentas de demostración.
 // ---------------------------------------------------------------------
-// Aviso: este prototipo NO tiene un backend seguro. Las "cuentas" se
-// guardan tal cual (correo + PIN de 4 dígitos) en el almacenamiento
-// compartido del artefacto/localStorage, solo para poder demostrar el
-// flujo de registro/inicio de sesión. Nunca uses una contraseña real.
+// Las cuentas nuevas se validan contra el API. Este almacenamiento conserva
+// perfiles para la experiencia offline; solo las cuentas de demo mantienen
+// un PIN local para que sigan funcionando en las demostraciones.
 const USERS_KEY = "aula_usuarios_v1";
 
 function loadUsers() {
@@ -408,7 +407,8 @@ function findUserByEmail(correo) {
   return loadUsers().find((u) => u.correo.toLowerCase() === String(correo).toLowerCase());
 }
 function registerUserLocal(user) {
-  const list = loadUsers();
+  const email = String(user.correo || "").trim().toLowerCase();
+  const list = loadUsers().filter((existing) => String(existing.correo || "").trim().toLowerCase() !== email);
   list.push(user);
   saveUsers(list);
   return user;

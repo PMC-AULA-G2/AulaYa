@@ -1,11 +1,79 @@
 import sqlite3
+import os
+import logging
 from pathlib import Path
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+from .auth import AuthError, AuthService, smtp_is_configured, smtp_sender_from_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data/aula_rag.sqlite"
+load_dotenv(ROOT / ".env")
 app = FastAPI(title="SLM AULA Multi-Device", version="0.2")
+logger = logging.getLogger(__name__)
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "AULA_CORS_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
+
+def get_auth_service() -> AuthService:
+    secret = os.getenv("AULA_AUTH_SECRET", "")
+    if len(secret) < 32:
+        raise AuthError(503, "La autenticación no está configurada en el servidor.")
+    database = Path(os.getenv("AULA_AUTH_DB", str(ROOT / "data/aula_auth.sqlite")))
+    if not database.is_absolute():
+        database = ROOT / database
+    return AuthService(database, secret, smtp_sender_from_environment())
+
+
+class AccountRegistration(BaseModel):
+    role: str = Field(max_length=20)
+    nombre: str = Field(min_length=1, max_length=120)
+    correo: str = Field(min_length=3, max_length=254)
+    colegioId: str = Field(min_length=1, max_length=32)
+    grado: str = Field(default="", max_length=40)
+    salon: str = Field(default="", max_length=20)
+    materias: str | list[str] = "todas"
+    pin: str = Field(min_length=4, max_length=4)
+
+
+class AccountLogin(BaseModel):
+    correo: str = Field(min_length=3, max_length=254)
+    pin: str = Field(min_length=1, max_length=20)
+
+
+class RecoveryRequest(BaseModel):
+    correo: str = Field(min_length=3, max_length=254)
+
+
+class RecoveryVerification(BaseModel):
+    correo: str = Field(min_length=3, max_length=254)
+    codigo: str = Field(min_length=1, max_length=20)
+
+
+class PinReset(BaseModel):
+    correo: str = Field(min_length=3, max_length=254)
+    token: str = Field(min_length=20, max_length=200)
+    nuevo_pin: str = Field(min_length=4, max_length=4)
+    legacy_profile: dict | None = None
+
+
+def raise_auth_error(error: AuthError):
+    raise HTTPException(status_code=error.status_code, detail=error.detail) from error
 
 class Chat(BaseModel):
     grado: int
@@ -37,6 +105,69 @@ def choose_tier(tier: str):
 @app.get("/health")
 def health():
     return {"ok": True, "service": "SLM AULA", "architecture": "adaptive"}
+
+
+@app.post("/auth/register")
+def register_account(payload: AccountRegistration):
+    try:
+        user = get_auth_service().register(payload.model_dump())
+    except AuthError as error:
+        raise_auth_error(error)
+    logger.info("Registered AULA account.")
+    return {"user": user}
+
+
+@app.post("/auth/login")
+def login_account(payload: AccountLogin, request: Request):
+    try:
+        user = get_auth_service().login(
+            payload.correo,
+            payload.pin,
+            request.client.host if request.client else "unknown",
+        )
+    except AuthError as error:
+        raise_auth_error(error)
+    return {"user": user}
+
+
+@app.post("/auth/recovery/request")
+def request_account_recovery(payload: RecoveryRequest, request: Request):
+    try:
+        service = get_auth_service()
+        service.request_recovery(
+            payload.correo,
+            smtp_is_configured(),
+            request.client.host if request.client else "unknown",
+        )
+    except AuthError as error:
+        raise_auth_error(error)
+    return {
+        "message": "Si existe una cuenta con ese correo, recibirás un código de recuperación.",
+    }
+
+
+@app.post("/auth/recovery/verify")
+def verify_account_recovery(payload: RecoveryVerification):
+    try:
+        token = get_auth_service().verify_recovery_code(payload.correo, payload.codigo)
+    except AuthError as error:
+        raise_auth_error(error)
+    return {"token": token}
+
+
+@app.post("/auth/recovery/reset")
+def reset_account_pin(payload: PinReset):
+    try:
+        get_auth_service().reset_pin(
+            payload.correo,
+            payload.token,
+            payload.nuevo_pin,
+            payload.legacy_profile,
+        )
+    except AuthError as error:
+        raise_auth_error(error)
+    return {"message": "PIN actualizado. Ya puedes iniciar sesión."}
+
 
 @app.post("/chat")
 def chat(x: Chat):
